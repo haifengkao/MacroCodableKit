@@ -29,7 +29,7 @@ public enum TaggedCodableCaseStyle {
 /// ```json
 /// {"intent": "SCROLL"}
 /// ```
-@attached(extension, conformances: Decodable, Encodable, names: named(CodingKeys), named(init(from:)), named(encode(to:)))
+@attached(extension, conformances: Decodable, Encodable, names: arbitrary)
 public macro TaggedCodable() = #externalMacro(module: "Macro", type: "TaggedCodableMacro")
 
 /// Specifies the discriminator key name and case-name transformation style
