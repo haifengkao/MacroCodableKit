@@ -15,6 +15,7 @@ I remove the heavy swift-format dependency to reduce compile time and potential 
   - [Basics - @Codable](#basics---codable)
   - [@AllOfCodable](#allofcodable)
   - [@OneOfCodable](#oneofcodable)
+  - [@TaggedCodable](#taggedcodable)
   - [Annotations](#annotations)
     - [@CodingKey](#codingkey)
     - [@OmitCoding](#omitcoding)
@@ -108,15 +109,32 @@ SocialUser:
 ```
 
 In Swift code it could be implemented with just `AllOfCodable` annotation
+
 ```swift
+struct User: Codable {
+    let name: String
+    let email: String
+}
+
 @AllOfCodable
 struct SocialUser {
-  struct Properties: Codable {
-    let isPublic: Bool
-    let username: String
-  }
-  let user: User
-  let additionalProperties: Properties
+    struct Properties: Codable {
+        let username: String
+        let isPublic: Bool
+    }
+    let user: User
+    let additionalProperties: Properties
+}
+```
+
+`@AllOfCodable` merges all stored properties into a single flat JSON object:
+
+```json
+{
+    "name": "John Doe",
+    "email": "john@example.com",
+    "username": "johndoe",
+    "isPublic": true
 }
 ```
 
@@ -128,16 +146,87 @@ struct SocialUser {
 > Only one associated value is expected in each enum case
 
 ```swift
+struct ImagePayload: Codable { let url: String; let width: Int; let height: Int }
+struct VideoPayload: Codable { let url: String; let duration: Int }
+struct FilePayload: Codable  { let url: String; let name: String }
+
 @OneOfCodable
-enum PaymentMethod {
-  case card(DebitCardPayload)
-  case applePay(payload: ApplePayPayload)
-  case sepa(_ payload: SepaPayload)
+enum MediaAttachment {
+    case image(ImagePayload)
+    case video(payload: VideoPayload)
+    case file(_ payload: FilePayload)
 }
-// valid jsons:
-// { "card": { ... DebitCardPayload ... }
-// { "applePay": { ... ApplePayPayload ... } }
-// { "sepa": { ... SepaPayload ... } }
+```
+
+This encodes/decodes the following JSON shapes:
+
+```json
+// MediaAttachment.image(ImagePayload(url: "https://example.com/photo.jpg", width: 1920, height: 1080))
+{"image": {"url": "https://example.com/photo.jpg", "width": 1920, "height": 1080}}
+
+// MediaAttachment.video(payload: VideoPayload(url: "https://example.com/clip.mp4", duration: 30))
+{"video": {"url": "https://example.com/clip.mp4", "duration": 30}}
+
+// MediaAttachment.file(FilePayload(url: "https://example.com/doc.pdf", name: "report.pdf"))
+{"file": {"url": "https://example.com/doc.pdf", "name": "report.pdf"}}
+```
+
+### @TaggedCodable
+
+`@TaggedCodable` generates `Codable` conformance for enums using an **adjacently tagged** format: one JSON key holds the discriminator tag, and a separate key holds the associated-value parameters.
+
+Use it together with `@CodedAt` (specifies the tag key and case-name style) and `@ContentAt` (specifies the params key):
+
+```swift
+@TaggedCodable
+@CodedAt("type", caseStyle: .screamingSnakeCase)
+@ContentAt("data")
+enum PaymentMethod {
+    case card(number: String, expiry: String)
+    case applePay(token: String)
+    case sepa(iban: String)
+}
+```
+
+This encodes/decodes the following JSON shapes:
+
+```json
+// PaymentMethod.card(number: "4242424242424242", expiry: "12/26")
+{"type": "CARD", "data": {"number": "4242424242424242", "expiry": "12/26"}}
+
+// PaymentMethod.applePay(token: "tok_abc123")
+{"type": "APPLE_PAY", "data": {"token": "tok_abc123"}}
+
+// PaymentMethod.sepa(iban: "DE89370400440532013000")
+{"type": "SEPA", "data": {"iban": "DE89370400440532013000"}}
+```
+
+> **Note**
+> Cases with no associated values omit the params key entirely when encoding, and tolerate its absence when decoding.
+
+#### `caseStyle` options
+
+The `caseStyle` parameter of `@CodedAt` controls how Swift case names map to the tag string in JSON:
+
+| Style | Swift case | JSON tag |
+|---|---|---|
+| `.screamingSnakeCase` *(default)* | `applePay` | `"APPLE_PAY"` |
+| `.snakeCase` | `applePay` | `"apple_pay"` |
+| `.camelCase` | `applePay` | `"applePay"` |
+| `.verbatim` | `applePay` | `"applePay"` |
+
+#### Custom keys
+
+Any string is valid for both the tag key and the params key:
+
+```swift
+@TaggedCodable
+@CodedAt("payment_type", caseStyle: .snakeCase)
+@ContentAt("payment_data")
+enum PaymentMethod {
+    case applePay(token: String)
+}
+// encodes as: {"payment_type": "apple_pay", "payment_data": {"token": "..."}}
 ```
 
 ### Annotations
