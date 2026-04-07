@@ -54,12 +54,12 @@ final class AnnotationTests: XCTestCase {
 
     @Codable
     struct DoubleStringExample {
-        @DefaultValue(EmptyString)
-        @ValueStrategy(AnnotationTests.DoubleStringStrategy)
+        @DefaultValue(EmptyString.self)
+        @ValueStrategy(AnnotationTests.DoubleStringStrategy.self)
         let string1: String
 
-        @DefaultValue(EmptyString)
-        @ValueStrategy(AnnotationTests.DoubleStringStrategy)
+        @DefaultValue(EmptyString.self)
+        @ValueStrategy(AnnotationTests.DoubleStringStrategy.self)
         let string2: String
     }
 
@@ -102,12 +102,12 @@ final class AnnotationTests: XCTestCase {
             let value: String
         }
 
-        @DefaultValue(AnnotationTests.Nested123DefaultValueProvider)
-        @ValueStrategy(AnnotationTests.NestedDoubleStringStrategy)
+        @DefaultValue(AnnotationTests.Nested123DefaultValueProvider.self)
+        @ValueStrategy(AnnotationTests.NestedDoubleStringStrategy.self)
         let n1: Nested
 
-        @DefaultValue(AnnotationTests.Nested123DefaultValueProvider)
-        @ValueStrategy(AnnotationTests.NestedDoubleStringStrategy)
+        @DefaultValue(AnnotationTests.Nested123DefaultValueProvider.self)
+        @ValueStrategy(AnnotationTests.NestedDoubleStringStrategy.self)
         let n2: Nested
     }
 
@@ -124,10 +124,10 @@ final class AnnotationTests: XCTestCase {
 
     @Codable
     struct TwiceExample: Equatable {
-        @CustomCoding(Twice)
+        @CustomCoding(Twice.self)
         var int: Int
 
-        @CustomCoding(Twice)
+        @CustomCoding(Twice.self)
         var string: String
     }
 

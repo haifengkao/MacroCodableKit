@@ -13,7 +13,7 @@ final class SafeCodingDictionaryTests: XCTestCase {
     struct SafeCodingDictionary1: Equatable {
         let intByString: [String: Int]
 
-        @CustomCoding(SafeDecoding)
+        @CustomCoding(SafeDecoding.self)
         let safeIntByString: [String: Int]
     }
 
@@ -21,7 +21,7 @@ final class SafeCodingDictionaryTests: XCTestCase {
     struct SafeCodingDictionary2 {
         let stringByInt: [Int: String]
 
-        @CustomCoding(SafeDecoding)
+        @CustomCoding(SafeDecoding.self)
         let safeStringByInt: [Int: String]
     }
 
@@ -29,7 +29,7 @@ final class SafeCodingDictionaryTests: XCTestCase {
     struct SafeCodingDictionary3 {
         let intByString: [String: Int]
 
-        @CustomCoding(SafeDecoding)
+        @CustomCoding(SafeDecoding.self)
         let safeIntByString: [String: Int]?
     }
 

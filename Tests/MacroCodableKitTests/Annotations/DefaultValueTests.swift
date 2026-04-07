@@ -13,13 +13,13 @@ final class DefaultValueTests: XCTestCase {
     struct DefaultValueBool {
         let boolean1: Bool
 
-        @DefaultValue(BoolFalse)
+        @DefaultValue(BoolFalse.self)
         let boolean2: Bool
 
-        @DefaultValue(BoolTrue)
+        @DefaultValue(BoolTrue.self)
         let boolean3: Bool
 
-        @DefaultValue(BoolTrue)
+        @DefaultValue(BoolTrue.self)
         let boolean4: Bool?
 
         let boolean5: Bool?
@@ -29,10 +29,10 @@ final class DefaultValueTests: XCTestCase {
     struct DefaultValueInt {
         let int1: Int
 
-        @DefaultValue(IntZero)
+        @DefaultValue(IntZero.self)
         let int2: Int
 
-        @DefaultValue(IntZero)
+        @DefaultValue(IntZero.self)
         let int3: Int?
 
         let int4: Int?
@@ -42,10 +42,10 @@ final class DefaultValueTests: XCTestCase {
     struct DefaultValueDouble {
         let double1: Double
 
-        @DefaultValue(DoubleZero)
+        @DefaultValue(DoubleZero.self)
         let double2: Double
 
-        @DefaultValue(DoubleZero)
+        @DefaultValue(DoubleZero.self)
         let double3: Double?
 
         let double4: Double?

@@ -13,13 +13,13 @@ final class SafeCodingArrayTests: XCTestCase {
     struct SafeCodingArray1: Equatable {
         let strings: [String]
 
-        @CustomCoding(SafeDecoding)
+        @CustomCoding(SafeDecoding.self)
         let safeStrings: [String]
     }
 
     @Codable
     struct SafeCodingArray2: Equatable {
-        @CustomCoding(SafeDecoding)
+        @CustomCoding(SafeDecoding.self)
         let safeStrings: [String]?
     }
 

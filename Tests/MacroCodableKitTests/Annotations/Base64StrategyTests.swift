@@ -11,7 +11,7 @@ import XCTest
 final class Base64StrategyTests: XCTestCase {
     @Codable
     struct Base64Struct {
-        @ValueStrategy(Base64Data)
+        @ValueStrategy(Base64Data.self)
         let data: Data
     }
 

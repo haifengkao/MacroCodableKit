@@ -12,7 +12,7 @@ import XCTest
 final class DateValueStrategyTests: XCTestCase {
     @Codable
     struct IOS8601DefaultExample {
-        @ValueStrategy(ISO8601Default)
+        @ValueStrategy(ISO8601Default.self)
         let date: Date
     }
 
@@ -29,7 +29,7 @@ final class DateValueStrategyTests: XCTestCase {
 
     @Codable
     struct ISO8601FullDateExample {
-        @ValueStrategy(ISO8601WithFullDate)
+        @ValueStrategy(ISO8601WithFullDate.self)
         let date: Date
     }
 
@@ -44,7 +44,7 @@ final class DateValueStrategyTests: XCTestCase {
 
     @Codable
     struct ISO8601FractionalSecondsExample {
-        @ValueStrategy(ISO8601WithFractionalSeconds)
+        @ValueStrategy(ISO8601WithFractionalSeconds.self)
         let date: Date
     }
 
@@ -59,7 +59,7 @@ final class DateValueStrategyTests: XCTestCase {
 
     @Codable
     struct RFC2822DateExample {
-        @ValueStrategy(RFC2822Date)
+        @ValueStrategy(RFC2822Date.self)
         let date: Date
     }
 
@@ -75,7 +75,7 @@ final class DateValueStrategyTests: XCTestCase {
 
     @Codable
     struct RFC3339DateExample {
-        @ValueStrategy(RFC3339Date)
+        @ValueStrategy(RFC3339Date.self)
         let date: Date
     }
 
@@ -90,7 +90,7 @@ final class DateValueStrategyTests: XCTestCase {
 
     @Codable
     struct YearMonthDayDateExample {
-        @ValueStrategy(YearMonthDayDate)
+        @ValueStrategy(YearMonthDayDate.self)
         let date: Date
     }
 
@@ -105,7 +105,7 @@ final class DateValueStrategyTests: XCTestCase {
 
     @Codable
     struct TimestampedDateExample {
-        @ValueStrategy(TimestampedDate)
+        @ValueStrategy(TimestampedDate.self)
         let date: Date
     }
 
@@ -129,7 +129,7 @@ final class DateValueStrategyTests: XCTestCase {
 
     @Codable
     struct TimestampedDateOptionalExample {
-        @ValueStrategy(TimestampedDate)
+        @ValueStrategy(TimestampedDate.self)
         let date: Date?
     }
 
