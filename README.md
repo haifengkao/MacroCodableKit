@@ -229,6 +229,42 @@ enum PaymentMethod {
 // encodes as: {"payment_type": "apple_pay", "payment_data": {"token": "..."}}
 ```
 
+#### Combining with @AllOfCodable
+
+Use `@AllOfCodable` to compose a `@TaggedCodable` enum together with other fields into one flat JSON object:
+
+```swift
+struct UserInfo: Codable {
+    let userId: String
+    let locale: String
+}
+
+@TaggedCodable
+@CodedAt("type", caseStyle: .screamingSnakeCase)
+@ContentAt("data")
+enum PaymentMethod {
+    case card(number: String, expiry: String)
+    case applePay(token: String)
+}
+
+@AllOfCodable
+struct PaymentRequest {
+    let userInfo: UserInfo
+    let payment: PaymentMethod
+}
+```
+
+`PaymentRequest` encodes as a single flat object — `userInfo`'s fields and `payment`'s tag/params all at the top level:
+
+```json
+{
+    "userId": "u_123",
+    "locale": "en-US",
+    "type": "CARD",
+    "data": {"number": "4242424242424242", "expiry": "12/26"}
+}
+```
+
 ### Annotations
 
 #### @CodingKey
