@@ -41,7 +41,7 @@ enum TaggedEnumMacroBase {
     // MARK: - Entry Point
 
     static func expansion(
-        of node: AttributeSyntax,
+        of _: AttributeSyntax,
         attachedTo declaration: some DeclGroupSyntax,
         providingExtensionsOf type: some TypeSyntaxProtocol,
         conformancesToGenerate: Set<Conformance>,
