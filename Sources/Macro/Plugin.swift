@@ -27,6 +27,11 @@
             EncodableMacro.self,
             DecodableMacro.self,
 
+            // Tagged enum
+            TaggedCodableMacro.self,
+            CodedAtMacro.self,
+            ContentAtMacro.self,
+
             // Coding customization
             CodingKeyMacro.self,
             OmitCodingMacro.self,
