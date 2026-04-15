@@ -210,10 +210,17 @@ The `caseStyle` parameter of `@CodedAt` controls how Swift case names map to the
 
 | Style | Swift case | JSON tag |
 |---|---|---|
-| `.screamingSnakeCase` *(default)* | `applePay` | `"APPLE_PAY"` |
+| `.verbatim` *(default)* | `send_message` | `"send_message"` |
+| `.screamingSnakeCase` | `applePay` | `"APPLE_PAY"` |
 | `.snakeCase` | `applePay` | `"apple_pay"` |
 | `.camelCase` | `applePay` | `"applePay"` |
-| `.verbatim` | `applePay` | `"applePay"` |
+| `.pascalCase` | `applePay` | `"ApplePay"` |
+| `.kebabCase` | `applePay` | `"apple-pay"` |
+
+For `.camelCase`, `.pascalCase`, `.snakeCase`, `.screamingSnakeCase`, and `.kebabCase`,
+case names are normalized through tokenization first, so `sendMessage`,
+`SendMessage`, `send_message`, and `send-message` all map consistently.
+`.verbatim` skips normalization and preserves the original case name as-is.
 
 #### Custom keys
 

@@ -1,4 +1,5 @@
 import MacroToolkit
+import Foundation
 import SwiftDiagnostics
 import SwiftSyntax
 import SwiftSyntaxMacros
@@ -21,21 +22,59 @@ enum TaggedEnumMacroBase {
         func transform(_ caseName: String) -> String {
             switch memberName {
             case "verbatim":            return caseName
-            case "camelCase":           return caseName
-            case "snakeCase":           return toSnakeCase(caseName)
-            case "screamingSnakeCase":  return toSnakeCase(caseName).uppercased()
-            default:                    return toSnakeCase(caseName).uppercased()
+            case "camelCase":           return CaseConverter.format(caseName, to: .camelCase)
+            case "pascalCase":          return CaseConverter.format(caseName, to: .pascalCase)
+            case "snakeCase":           return CaseConverter.format(caseName, to: .snakeCase)
+            case "screamingSnakeCase":  return CaseConverter.format(caseName, to: .screamingSnakeCase)
+            case "kebabCase":           return CaseConverter.format(caseName, to: .kebabCase)
+            default:                    return caseName
             }
+        }
+    }
+
+    struct CaseConverter {
+        static func tokenize(_ input: String) -> [String] {
+            let splitCamel = input.replacingOccurrences(
+                of: "([a-z])([A-Z])",
+                with: "$1 $2",
+                options: .regularExpression
+            )
+
+            let separators = CharacterSet.alphanumerics.inverted
+            let components = splitCamel.components(separatedBy: separators)
+
+            return components
+                .filter { !$0.isEmpty }
+                .map { $0.lowercased() }
         }
 
-        private func toSnakeCase(_ s: String) -> String {
-            var result = ""
-            for (i, c) in s.enumerated() {
-                if c.isUppercase && i > 0 { result += "_" }
-                result += String(c).lowercased()
+        static func format(_ string: String, to style: Style) -> String {
+            let tokens = tokenize(string)
+            guard !tokens.isEmpty else { return string }
+
+            switch style {
+            case .camelCase:
+                let first = tokens[0]
+                let rest = tokens.dropFirst().map(\.capitalized)
+                return first + rest.joined()
+            case .pascalCase:
+                return tokens.map(\.capitalized).joined()
+            case .snakeCase:
+                return tokens.joined(separator: "_")
+            case .screamingSnakeCase:
+                return tokens.joined(separator: "_").uppercased()
+            case .kebabCase:
+                return tokens.joined(separator: "-")
             }
-            return result
         }
+    }
+
+    enum Style {
+        case camelCase
+        case pascalCase
+        case snakeCase
+        case screamingSnakeCase
+        case kebabCase
     }
 
     // MARK: - Entry Point
@@ -151,7 +190,7 @@ enum TaggedEnumMacroBase {
 
         let tagKey = segment.content.text
 
-        var styleName = "screamingSnakeCase"
+        var styleName = "verbatim"
         if let styleArg = args.first(where: { $0.label?.text == "caseStyle" }),
            let member = styleArg.expression.as(MemberAccessExprSyntax.self) {
             styleName = member.declName.baseName.text

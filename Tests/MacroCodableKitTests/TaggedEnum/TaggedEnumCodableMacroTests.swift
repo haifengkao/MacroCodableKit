@@ -146,4 +146,304 @@ final class TaggedEnumCodableMacroTests: XCTestCase {
             }
         }
     }
+
+    func test_defaultIsVerbatim() {
+        withMacroTesting(
+            isRecording: isRecording,
+            macros: [
+                "TaggedCodable": TaggedCodableMacro.self,
+                "CodedAt": CodedAtMacro.self,
+                "ContentAt": ContentAtMacro.self,
+            ]
+        ) {
+            assertMacro {
+                """
+                @TaggedCodable
+                @CodedAt("kind")
+                @ContentAt("data")
+                enum Command\(sutSuffix) {
+                    case sample_entry(text: String)
+                }
+                """
+            } expansion: {
+                #"""
+                enum Command__testing__ {
+                    case sample_entry(text: String)
+                }
+
+                extension Command__testing__: Decodable, Encodable {
+                    private enum Sample_entryCodingKeys: String, CodingKey {
+                        case text
+                    }
+                    enum CodingKeys: String, CodingKey, CaseIterable, Sendable, Hashable {
+                        case kind
+                        case data
+                    }
+                    init(from decoder: Decoder) throws {
+                        let container = try decoder.container(keyedBy: CodingKeys.self)
+                        let tag = try container.decode(String.self, forKey: .kind)
+                        switch tag {
+                        case "sample_entry":
+                            let params = try container.nestedContainer(keyedBy: Sample_entryCodingKeys.self, forKey: .data)
+                            self = .sample_entry(text: try params.decode(String.self, forKey: .text))
+                            default:
+                            throw DecodingError.dataCorrupted(
+                                .init(codingPath: container.codingPath, debugDescription: "Unknown \(tag)")
+                            )
+                        }
+                    }
+                    func encode(to encoder: Encoder) throws {
+                        var container = encoder.container(keyedBy: CodingKeys.self)
+                        switch self {
+                        case let .sample_entry(text):
+                            try container.encode("sample_entry", forKey: .kind)
+                            var params = container.nestedContainer(keyedBy: Sample_entryCodingKeys.self, forKey: .data)
+                            try params.encode(text, forKey: .text)
+                        }
+                    }
+                }
+                """#
+            }
+        }
+    }
+
+    func test_verbatim() {
+        withMacroTesting(
+            isRecording: isRecording,
+            macros: [
+                "TaggedCodable": TaggedCodableMacro.self,
+                "CodedAt": CodedAtMacro.self,
+                "ContentAt": ContentAtMacro.self,
+            ]
+        ) {
+            assertMacro {
+                """
+                @TaggedCodable
+                @CodedAt("kind", caseStyle: .verbatim)
+                @ContentAt("data")
+                enum Command\(sutSuffix) {
+                    case sample_entry(text: String)
+                }
+                """
+            } expansion: {
+                #"""
+                enum Command__testing__ {
+                    case sample_entry(text: String)
+                }
+
+                extension Command__testing__: Decodable, Encodable {
+                    private enum Sample_entryCodingKeys: String, CodingKey {
+                        case text
+                    }
+                    enum CodingKeys: String, CodingKey, CaseIterable, Sendable, Hashable {
+                        case kind
+                        case data
+                    }
+                    init(from decoder: Decoder) throws {
+                        let container = try decoder.container(keyedBy: CodingKeys.self)
+                        let tag = try container.decode(String.self, forKey: .kind)
+                        switch tag {
+                        case "sample_entry":
+                            let params = try container.nestedContainer(keyedBy: Sample_entryCodingKeys.self, forKey: .data)
+                            self = .sample_entry(text: try params.decode(String.self, forKey: .text))
+                            default:
+                            throw DecodingError.dataCorrupted(
+                                .init(codingPath: container.codingPath, debugDescription: "Unknown \(tag)")
+                            )
+                        }
+                    }
+                    func encode(to encoder: Encoder) throws {
+                        var container = encoder.container(keyedBy: CodingKeys.self)
+                        switch self {
+                        case let .sample_entry(text):
+                            try container.encode("sample_entry", forKey: .kind)
+                            var params = container.nestedContainer(keyedBy: Sample_entryCodingKeys.self, forKey: .data)
+                            try params.encode(text, forKey: .text)
+                        }
+                    }
+                }
+                """#
+            }
+        }
+    }
+
+    func test_camelCase_normalizesSnakeCaseCaseName() {
+        withMacroTesting(
+            isRecording: isRecording,
+            macros: [
+                "TaggedCodable": TaggedCodableMacro.self,
+                "CodedAt": CodedAtMacro.self,
+                "ContentAt": ContentAtMacro.self,
+            ]
+        ) {
+            assertMacro {
+                """
+                @TaggedCodable
+                @CodedAt("kind", caseStyle: .camelCase)
+                @ContentAt("data")
+                enum Command\(sutSuffix) {
+                    case send_message(text: String)
+                }
+                """
+            } expansion: {
+                #"""
+                enum Command__testing__ {
+                    case send_message(text: String)
+                }
+
+                extension Command__testing__: Decodable, Encodable {
+                    private enum Send_messageCodingKeys: String, CodingKey {
+                        case text
+                    }
+                    enum CodingKeys: String, CodingKey, CaseIterable, Sendable, Hashable {
+                        case kind
+                        case data
+                    }
+                    init(from decoder: Decoder) throws {
+                        let container = try decoder.container(keyedBy: CodingKeys.self)
+                        let tag = try container.decode(String.self, forKey: .kind)
+                        switch tag {
+                        case "sendMessage":
+                            let params = try container.nestedContainer(keyedBy: Send_messageCodingKeys.self, forKey: .data)
+                            self = .send_message(text: try params.decode(String.self, forKey: .text))
+                            default:
+                            throw DecodingError.dataCorrupted(
+                                .init(codingPath: container.codingPath, debugDescription: "Unknown \(tag)")
+                            )
+                        }
+                    }
+                    func encode(to encoder: Encoder) throws {
+                        var container = encoder.container(keyedBy: CodingKeys.self)
+                        switch self {
+                        case let .send_message(text):
+                            try container.encode("sendMessage", forKey: .kind)
+                            var params = container.nestedContainer(keyedBy: Send_messageCodingKeys.self, forKey: .data)
+                            try params.encode(text, forKey: .text)
+                        }
+                    }
+                }
+                """#
+            }
+        }
+    }
+
+    func test_pascalCase() {
+        withMacroTesting(
+            isRecording: isRecording,
+            macros: [
+                "TaggedCodable": TaggedCodableMacro.self,
+                "CodedAt": CodedAtMacro.self,
+                "ContentAt": ContentAtMacro.self,
+            ]
+        ) {
+            assertMacro {
+                """
+                @TaggedCodable
+                @CodedAt("kind", caseStyle: .pascalCase)
+                @ContentAt("data")
+                enum Command\(sutSuffix) {
+                    case send_message(text: String)
+                }
+                """
+            } expansion: {
+                #"""
+                enum Command__testing__ {
+                    case send_message(text: String)
+                }
+
+                extension Command__testing__: Decodable, Encodable {
+                    private enum Send_messageCodingKeys: String, CodingKey {
+                        case text
+                    }
+                    enum CodingKeys: String, CodingKey, CaseIterable, Sendable, Hashable {
+                        case kind
+                        case data
+                    }
+                    init(from decoder: Decoder) throws {
+                        let container = try decoder.container(keyedBy: CodingKeys.self)
+                        let tag = try container.decode(String.self, forKey: .kind)
+                        switch tag {
+                        case "SendMessage":
+                            let params = try container.nestedContainer(keyedBy: Send_messageCodingKeys.self, forKey: .data)
+                            self = .send_message(text: try params.decode(String.self, forKey: .text))
+                            default:
+                            throw DecodingError.dataCorrupted(
+                                .init(codingPath: container.codingPath, debugDescription: "Unknown \(tag)")
+                            )
+                        }
+                    }
+                    func encode(to encoder: Encoder) throws {
+                        var container = encoder.container(keyedBy: CodingKeys.self)
+                        switch self {
+                        case let .send_message(text):
+                            try container.encode("SendMessage", forKey: .kind)
+                            var params = container.nestedContainer(keyedBy: Send_messageCodingKeys.self, forKey: .data)
+                            try params.encode(text, forKey: .text)
+                        }
+                    }
+                }
+                """#
+            }
+        }
+    }
+
+    func test_kebabCase() {
+        withMacroTesting(
+            isRecording: isRecording,
+            macros: [
+                "TaggedCodable": TaggedCodableMacro.self,
+                "CodedAt": CodedAtMacro.self,
+                "ContentAt": ContentAtMacro.self,
+            ]
+        ) {
+            assertMacro {
+                """
+                @TaggedCodable
+                @CodedAt("kind", caseStyle: .kebabCase)
+                @ContentAt("data")
+                enum Command\(sutSuffix) {
+                    case send_message(text: String)
+                }
+                """
+            } expansion: {
+                #"""
+                enum Command__testing__ {
+                    case send_message(text: String)
+                }
+
+                extension Command__testing__: Decodable, Encodable {
+                    private enum Send_messageCodingKeys: String, CodingKey {
+                        case text
+                    }
+                    enum CodingKeys: String, CodingKey, CaseIterable, Sendable, Hashable {
+                        case kind
+                        case data
+                    }
+                    init(from decoder: Decoder) throws {
+                        let container = try decoder.container(keyedBy: CodingKeys.self)
+                        let tag = try container.decode(String.self, forKey: .kind)
+                        switch tag {
+                        case "send-message":
+                            let params = try container.nestedContainer(keyedBy: Send_messageCodingKeys.self, forKey: .data)
+                            self = .send_message(text: try params.decode(String.self, forKey: .text))
+                            default:
+                            throw DecodingError.dataCorrupted(
+                                .init(codingPath: container.codingPath, debugDescription: "Unknown \(tag)")
+                            )
+                        }
+                    }
+                    func encode(to encoder: Encoder) throws {
+                        var container = encoder.container(keyedBy: CodingKeys.self)
+                        switch self {
+                        case let .send_message(text):
+                            try container.encode("send-message", forKey: .kind)
+                            var params = container.nestedContainer(keyedBy: Send_messageCodingKeys.self, forKey: .data)
+                            try params.encode(text, forKey: .text)
+                        }
+                    }
+                }
+                """#
+            }
+        }
+    }
 }

@@ -1,11 +1,3 @@
-/// The strategy used to transform enum case names into the serialized tag value.
-public enum TaggedCodableCaseStyle {
-    case verbatim
-    case camelCase
-    case snakeCase
-    case screamingSnakeCase
-}
-
 /// Generates `Decodable` and `Encodable` conformances for an enum using an
 /// adjacently tagged format: one key for the discriminator tag, another for
 /// the associated-value parameters.
@@ -37,9 +29,9 @@ public macro TaggedCodable() = #externalMacro(module: "Macro", type: "TaggedCoda
 ///
 /// - Parameters:
 ///   - key: The JSON key used as the discriminator (e.g. `"intent"`).
-///   - caseStyle: How enum case names map to tag values. Defaults to `.screamingSnakeCase`.
+///   - caseStyle: How enum case names map to tag values. Defaults to `.verbatim`.
 @attached(peer)
-public macro CodedAt(_ key: String, caseStyle: TaggedCodableCaseStyle = .screamingSnakeCase) = #externalMacro(module: "Macro", type: "CodedAtMacro")
+public macro CodedAt(_ key: String, caseStyle: CaseStyle = .verbatim) = #externalMacro(module: "Macro", type: "CodedAtMacro")
 
 /// Specifies the JSON key under which associated values are nested for
 /// ``TaggedCodable()``.
