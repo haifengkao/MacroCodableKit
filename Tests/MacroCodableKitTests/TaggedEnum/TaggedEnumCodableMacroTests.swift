@@ -147,6 +147,66 @@ final class TaggedEnumCodableMacroTests: XCTestCase {
         }
     }
 
+    func test_screamingSnakeCase_numericCaseName() {
+        withMacroTesting(
+            isRecording: isRecording,
+            macros: [
+                "TaggedCodable": TaggedCodableMacro.self,
+                "CodedAt": CodedAtMacro.self,
+                "ContentAt": ContentAtMacro.self,
+            ]
+        ) {
+            assertMacro {
+                """
+                @TaggedCodable
+                @CodedAt("type", caseStyle: .screamingSnakeCase)
+                @ContentAt("params")
+                enum Command\(sutSuffix) {
+                    case apple123Basket(value: String)
+                }
+                """
+            } expansion: {
+                #"""
+                enum Command__testing__ {
+                    case apple123Basket(value: String)
+                }
+
+                extension Command__testing__: Decodable, Encodable {
+                    private enum Apple123BasketCodingKeys: String, CodingKey {
+                        case value
+                    }
+                    enum CodingKeys: String, CodingKey, CaseIterable, Sendable, Hashable {
+                        case type
+                        case params
+                    }
+                    init(from decoder: Decoder) throws {
+                        let container = try decoder.container(keyedBy: CodingKeys.self)
+                        let tag = try container.decode(String.self, forKey: .type)
+                        switch tag {
+                        case "APPLE123_BASKET":
+                            let params = try container.nestedContainer(keyedBy: Apple123BasketCodingKeys.self, forKey: .params)
+                            self = .apple123Basket(value: try params.decode(String.self, forKey: .value))
+                            default:
+                            throw DecodingError.dataCorrupted(
+                                .init(codingPath: container.codingPath, debugDescription: "Unknown \(tag)")
+                            )
+                        }
+                    }
+                    func encode(to encoder: Encoder) throws {
+                        var container = encoder.container(keyedBy: CodingKeys.self)
+                        switch self {
+                        case let .apple123Basket(value):
+                            try container.encode("APPLE123_BASKET", forKey: .type)
+                            var params = container.nestedContainer(keyedBy: Apple123BasketCodingKeys.self, forKey: .params)
+                            try params.encode(value, forKey: .value)
+                        }
+                    }
+                }
+                """#
+            }
+        }
+    }
+
     func test_defaultIsVerbatim() {
         withMacroTesting(
             isRecording: isRecording,

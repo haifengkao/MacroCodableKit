@@ -7,6 +7,7 @@ final class CaseStyleTests: XCTestCase {
         XCTAssertEqual(CaseConverter.tokenize("SampleEntry"), ["sample", "entry"])
         XCTAssertEqual(CaseConverter.tokenize("sample_entry"), ["sample", "entry"])
         XCTAssertEqual(CaseConverter.tokenize("sample-entry"), ["sample", "entry"])
+        XCTAssertEqual(CaseConverter.tokenize("apple123Basket"), ["apple123", "basket"])
     }
 
     func test_format() {
@@ -16,5 +17,6 @@ final class CaseStyleTests: XCTestCase {
         XCTAssertEqual(CaseConverter.format("sampleEntry", to: .snakeCase), "sample_entry")
         XCTAssertEqual(CaseConverter.format("sampleEntry", to: .screamingSnakeCase), "SAMPLE_ENTRY")
         XCTAssertEqual(CaseConverter.format("sampleEntry", to: .kebabCase), "sample-entry")
+        XCTAssertEqual(CaseConverter.format("apple123Basket", to: .snakeCase), "apple123_basket")
     }
 }

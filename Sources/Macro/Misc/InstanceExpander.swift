@@ -17,7 +17,8 @@ final class InstanceExpander {
     func verify(
         declaration: some DeclGroupSyntax,
         strategy: CodableStrategy,
-        conformances: Set<Conformance>
+        conformances: Set<Conformance>,
+        config: CodableMacroConfig = .init()
     ) throws -> CodableBuildingData {
         guard let instance = InstanceImpl(declaration: declaration), instance.isStruct else {
             MacroConfiguration.current.context.diagnose(
@@ -34,7 +35,8 @@ final class InstanceExpander {
         if strategy == .codingKeys {
             codingKeysBuildingData = try CodingKeysBuilder.verify(
                 accessModifier: accessModifier,
-                instance: instance
+                instance: instance,
+                caseStyle: config.caseStyle
             )
         } else {
             codingKeysBuildingData = nil

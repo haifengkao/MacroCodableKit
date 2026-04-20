@@ -17,6 +17,15 @@
 /// }
 /// ```
 ///
+/// Use `caseStyle:` to derive default coding keys from stored property names:
+/// ```swift
+/// @Codable(caseStyle: .snakeCase)
+/// struct ExamplePayload {
+///     let primaryValue: String
+///     let secondaryLabel: String?
+/// }
+/// ```
+///
 /// If you need only `Decodable` or `Encodable` use ``Decodable()`` or ``Encodable()`` respectively
 ///
 /// **Adjust coding behaviour**:
@@ -92,7 +101,7 @@
 /// - Handle decoding errors with ``CustomCodingDecoding/errorHandler`` in ``CustomCodingDecoding``
 /// - Handle encoding errors with ``CustomCodingEncoding/errorHandler`` in ``CustomCodingEncoding``
 @attached(extension, conformances: Decodable, Encodable, names: named(CodingKeys), named(init(from:)), named(encode(to:)))
-public macro Codable() = #externalMacro(module: "Macro", type: "CodableMacro")
+public macro Codable(caseStyle: CaseStyle = .verbatim) = #externalMacro(module: "Macro", type: "CodableMacro")
 
 /// Generates `Decodable` conformance respecting property annotations.
 ///
@@ -105,8 +114,10 @@ public macro Codable() = #externalMacro(module: "Macro", type: "CodableMacro")
 ///     let property: String
 /// }
 /// ```
+///
+/// `caseStyle:` applies to generated default keys here as well, while `@CodingKey(...)` still wins for explicitly annotated properties.
 @attached(extension, conformances: Decodable, names: named(CodingKeys), named(init(from:)))
-public macro Decodable() = #externalMacro(module: "Macro", type: "DecodableMacro")
+public macro Decodable(caseStyle: CaseStyle = .verbatim) = #externalMacro(module: "Macro", type: "DecodableMacro")
 
 /// Generates `Encodable` conformance respecting property annotations.
 ///
@@ -119,5 +130,7 @@ public macro Decodable() = #externalMacro(module: "Macro", type: "DecodableMacro
 ///     let property: String
 /// }
 /// ```
+///
+/// `caseStyle:` applies to generated default keys here as well, while `@CodingKey(...)` still wins for explicitly annotated properties.
 @attached(extension, conformances: Encodable, names: named(CodingKeys), named(encode(to:)))
-public macro Encodable() = #externalMacro(module: "Macro", type: "EncodableMacro")
+public macro Encodable(caseStyle: CaseStyle = .verbatim) = #externalMacro(module: "Macro", type: "EncodableMacro")

@@ -102,6 +102,45 @@ final class DecodableMacroTests: XCTestCase {
 
             assertMacro {
                 """
+                @Decodable(caseStyle: .snakeCase)
+                struct SnakeCaseExample\(sutSuffix) {
+                    let primaryValue: String
+                    let secondaryLabel: String?
+                    let apple123Basket: String
+
+                    @CodingKey("ManualName")
+                    let customField: String
+                }
+                """
+            } expansion: {
+                """
+                struct SnakeCaseExample__testing__ {
+                    let primaryValue: String
+                    let secondaryLabel: String?
+                    let apple123Basket: String
+                    let customField: String
+                }
+
+                extension SnakeCaseExample__testing__: Decodable {
+                    enum CodingKeys: String, CodingKey, CaseIterable, Sendable, Hashable {
+                        case primaryValue = "primary_value"
+                        case secondaryLabel = "secondary_label"
+                        case apple123Basket = "apple123_basket"
+                        case customField = "ManualName"
+                    }
+                    init(from decoder: Decoder) throws {
+                        let container = try decoder.container(keyedBy: CodingKeys.self)
+                        self.primaryValue = try container.decode(String.self, forKey: .primaryValue)
+                        self.secondaryLabel = try container.decodeIfPresent(String.self, forKey: .secondaryLabel)
+                        self.apple123Basket = try container.decode(String.self, forKey: .apple123Basket)
+                        self.customField = try container.decode(String.self, forKey: .customField)
+                    }
+                }
+                """
+            }
+
+            assertMacro {
+                """
                 @Decodable
                 struct NoCodableExample\(sutSuffix) {
                     let brand: Brand

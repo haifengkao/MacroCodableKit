@@ -13,7 +13,7 @@ import SwiftSyntaxMacros
 
 struct CodableMacroBase {
     static func expansion(
-        of _: AttributeSyntax,
+        of node: AttributeSyntax,
         attachedTo declaration: some DeclGroupSyntax,
         providingExtensionsOf type: some TypeSyntaxProtocol,
         conformancesToGenerate: Set<Conformance>,
@@ -36,10 +36,16 @@ struct CodableMacroBase {
         )
 
         let expander = InstanceExpander(codableFactory: DefaultCodableBuilderFactoryImpl())
+        let config = CodableMacroConfig(node: node)
 
         let buildingData: CodableBuildingData
         do {
-            buildingData = try expander.verify(declaration: declaration, strategy: .codingKeys, conformances: conformancesToGenerate)
+            buildingData = try expander.verify(
+                declaration: declaration,
+                strategy: .codingKeys,
+                conformances: conformancesToGenerate,
+                config: config
+            )
         } catch {
             return []
         }

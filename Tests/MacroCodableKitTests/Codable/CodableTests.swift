@@ -29,6 +29,16 @@ final class CodableTests: XCTestCase {
         let c: C
     }
 
+    @Codable(caseStyle: .snakeCase)
+    struct SnakeCaseCodable: Equatable {
+        let primaryValue: String
+        let secondaryLabel: String?
+        let apple123Basket: String
+
+        @CodingKey("ManualName")
+        let customField: String?
+    }
+
     func test_ValidNestedCodable() throws {
         let testCases: [(String, NestedCodable)] = [
             (
@@ -53,5 +63,34 @@ final class CodableTests: XCTestCase {
             _ = try json.data(using: .utf8).flatMap { try JSONDecoder().decode(NestedCodable.self, from: $0) }
             XCTFail("Shouldn't decode invalid \(json)")
         } catch {}
+    }
+
+    func test_SnakeCaseStyleAppliesToGeneratedCodingKeys() throws {
+        let json = #"{"primary_value":"alpha","secondary_label":"beta","apple123_basket":"fruit","ManualName":"gamma"}"#
+        let data = Data(json.utf8)
+
+        let decoded = try JSONDecoder().decode(SnakeCaseCodable.self, from: data)
+
+        XCTAssertEqual(
+            decoded,
+            SnakeCaseCodable(
+                primaryValue: "alpha",
+                secondaryLabel: "beta",
+                apple123Basket: "fruit",
+                customField: "gamma"
+            )
+        )
+
+        let encoded = try JSONEncoder().encode(decoded)
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: encoded) as? [String: String])
+
+        XCTAssertEqual(object["primary_value"], "alpha")
+        XCTAssertEqual(object["secondary_label"], "beta")
+        XCTAssertEqual(object["apple123_basket"], "fruit")
+        XCTAssertEqual(object["ManualName"], "gamma")
+        XCTAssertNil(object["primaryValue"])
+        XCTAssertNil(object["secondaryLabel"])
+        XCTAssertNil(object["apple123Basket"])
+        XCTAssertNil(object["customField"])
     }
 }

@@ -10,7 +10,8 @@ import MacroToolkit
 extension CodingKeysBuilder {
     static func verify(
         accessModifier: AccessModifier?,
-        instance: Instance
+        instance: Instance,
+        caseStyle: CodableMacroConfig.CaseStyleTransformer
     ) throws -> CodingKeysBuilder.BuildingData {
         CodingKeysBuilder.BuildingData(
             accessModifier: accessModifier,
@@ -45,9 +46,26 @@ extension CodingKeysBuilder {
 
                     return CodingKeysBuilder.BuildingData.Item(
                         identifier: identifier,
-                        customCodingKey: (knownAttributes[.codingKey]?.first as? CodingKey)?.key
+                        customCodingKey: makeCodingKey(
+                            identifier: identifier,
+                            knownAttributes: knownAttributes,
+                            caseStyle: caseStyle
+                        )
                     )
                 }
         )
+    }
+
+    private static func makeCodingKey(
+        identifier: String,
+        knownAttributes: Variable.AllKnownAttributes,
+        caseStyle: CodableMacroConfig.CaseStyleTransformer
+    ) -> String? {
+        if let explicitKey = (knownAttributes[.codingKey]?.first as? CodingKey)?.key {
+            return explicitKey
+        }
+
+        let transformedKey = caseStyle.transform(identifier)
+        return transformedKey == identifier ? nil : transformedKey
     }
 }
