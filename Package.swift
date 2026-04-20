@@ -36,16 +36,24 @@ let package = Package(
         ),
     ],
     targets: [
+        .target(
+            name: "MacroCodableKitShared"
+        ),
+
         // Macro declaration
         .target(
             name: "MacroCodableKit",
-            dependencies: ["Macro"]
+            dependencies: [
+                "MacroCodableKitShared",
+                "Macro",
+            ]
         ),
 
         // Macros
         .macro(
             name: "Macro",
             dependencies: [
+                "MacroCodableKitShared",
                 .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
                 .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
                 .product(name: "MacroToolkit", package: "swift-macro-toolkit"),

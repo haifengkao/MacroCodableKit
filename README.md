@@ -69,6 +69,21 @@ struct User {
 }
 ```
 
+You can also derive default coding keys from property names:
+
+```swift
+@Codable(caseStyle: .snakeCase)
+struct ExamplePayload {
+    let primaryValue: String
+    let secondaryLabel: String?
+
+    @CodingKey("ManualName")
+    let customField: String?
+}
+```
+
+This generates coding keys like `"primary_value"` and `"secondary_label"`, while `customField` still uses `"ManualName"`.
+
 Let's convert `birthday` to `Date`, change coding key of `isVerified` and make it default to `false`
 
 > **Note**
@@ -283,6 +298,8 @@ struct User {
   let isVerified: Bool
 }
 ```
+
+When `@Codable(caseStyle: ...)`, `@Decodable(caseStyle: ...)`, or `@Encodable(caseStyle: ...)` is used, `@CodingKey(...)` still takes precedence for that property.
 
 #### @OmitCoding
 

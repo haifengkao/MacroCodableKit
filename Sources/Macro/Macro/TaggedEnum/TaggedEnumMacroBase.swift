@@ -1,5 +1,6 @@
 import MacroToolkit
 import Foundation
+import MacroCodableKitShared
 import SwiftDiagnostics
 import SwiftSyntax
 import SwiftSyntaxMacros
@@ -20,61 +21,9 @@ enum TaggedEnumMacroBase {
         let memberName: String
 
         func transform(_ caseName: String) -> String {
-            switch memberName {
-            case "verbatim":            return caseName
-            case "camelCase":           return CaseConverter.format(caseName, to: .camelCase)
-            case "pascalCase":          return CaseConverter.format(caseName, to: .pascalCase)
-            case "snakeCase":           return CaseConverter.format(caseName, to: .snakeCase)
-            case "screamingSnakeCase":  return CaseConverter.format(caseName, to: .screamingSnakeCase)
-            case "kebabCase":           return CaseConverter.format(caseName, to: .kebabCase)
-            default:                    return caseName
-            }
+            guard let style = CaseStyle(rawValue: memberName) else { return caseName }
+            return CaseConverter.format(caseName, to: style)
         }
-    }
-
-    struct CaseConverter {
-        static func tokenize(_ input: String) -> [String] {
-            let splitCamel = input.replacingOccurrences(
-                of: "([a-z])([A-Z])",
-                with: "$1 $2",
-                options: .regularExpression
-            )
-
-            let separators = CharacterSet.alphanumerics.inverted
-            let components = splitCamel.components(separatedBy: separators)
-
-            return components
-                .filter { !$0.isEmpty }
-                .map { $0.lowercased() }
-        }
-
-        static func format(_ string: String, to style: Style) -> String {
-            let tokens = tokenize(string)
-            guard !tokens.isEmpty else { return string }
-
-            switch style {
-            case .camelCase:
-                let first = tokens[0]
-                let rest = tokens.dropFirst().map(\.capitalized)
-                return first + rest.joined()
-            case .pascalCase:
-                return tokens.map(\.capitalized).joined()
-            case .snakeCase:
-                return tokens.joined(separator: "_")
-            case .screamingSnakeCase:
-                return tokens.joined(separator: "_").uppercased()
-            case .kebabCase:
-                return tokens.joined(separator: "-")
-            }
-        }
-    }
-
-    enum Style {
-        case camelCase
-        case pascalCase
-        case snakeCase
-        case screamingSnakeCase
-        case kebabCase
     }
 
     // MARK: - Entry Point
