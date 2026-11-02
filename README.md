@@ -13,6 +13,7 @@ I remove the heavy swift-format dependency to reduce compile time and potential 
 - [Features](#features)
 - [Usage](#usage)
   - [Basics - @Codable](#basics---codable)
+  - [Strict decoding and validation](#strict-decoding-and-validation)
   - [@AllOfCodable](#allofcodable)
   - [@OneOfCodable](#oneofcodable)
   - [@TaggedCodable](#taggedcodable)
@@ -20,6 +21,7 @@ I remove the heavy swift-format dependency to reduce compile time and potential 
     - [@CodingKey](#codingkey)
     - [@OmitCoding](#omitcoding)
     - [@DefaultValue](#defaultvalue)
+    - [@AbsentDefault](#absentdefault)
     - [@ValueCodable](#valuecodable)
     - [@CustomCoding](#customcoding)
 - [Installation](#installation)
@@ -104,6 +106,31 @@ struct User {
 // json: { "birthday": 1696291200.0, "name": "Mikhail" }
 // is_verified is not specified, so the default value is "false" as specified by `@DefaultValue`
 ```
+
+### Strict decoding and validation
+
+`strict: true` throws when the JSON has a key the type doesn't declare. A non-optional property must be present; an optional one may be absent.
+
+`validated: true` calls `try validate()` after decoding. The type must declare that method.
+
+```swift
+@Codable(caseStyle: .snakeCase, strict: true, validated: true)
+struct Box {
+    let boxWidth: Int
+    let label: String?
+
+    func validate() throws {
+        guard boxWidth >= 0 else { throw BoxError.negativeWidth }
+    }
+}
+
+// {"box_width": 1}                   decodes
+// {"box_width": 1, "color": "red"}   throws: unknown key
+// {"label": "a"}                     throws: missing key
+// {"box_width": -1}                  throws: BoxError.negativeWidth
+```
+
+`@Decodable` takes the same arguments, and so does `@CodedAt` on a `@TaggedCodable` enum.
 
 ### @AllOfCodable
 
@@ -286,6 +313,46 @@ enum PaymentMethod {
 // encodes as: {"payment_type": "apple_pay", "payment_data": {"token": "..."}}
 ```
 
+#### Flat enums
+
+Leave out `@ContentAt` and associated values become siblings of the tag. `keyStyle` maps their labels to JSON keys, `@CaseTag` overrides the tag of one case, and a parameter default applies when the key is absent:
+
+```swift
+@TaggedCodable
+@CodedAt("type", caseStyle: .snakeCase, keyStyle: .snakeCase)
+enum Shape {
+    case unitCircle
+    case roundedBox(cornerRadius: Int = 3, label: String?)
+    @CaseTag("legacy_line")
+    case line(length: Int)
+}
+
+// Shape.unitCircle                            -> {"type": "unit_circle"}
+// Shape.roundedBox(cornerRadius: 1, label: nil) -> {"type": "rounded_box", "corner_radius": 1}
+// Shape.line(length: 2)                       -> {"type": "legacy_line", "length": 2}
+// {"type": "rounded_box"} decodes as Shape.roundedBox(cornerRadius: 3, label: nil)
+```
+
+A malformed value still throws: `{"type": "rounded_box", "corner_radius": "x"}` doesn't fall back to the default.
+
+#### Single unlabeled value
+
+With `@ContentAt`, a case with one unlabeled associated value stores that value directly at the content key:
+
+```swift
+struct Card: Codable {
+    let last4: String
+}
+
+@TaggedCodable
+@CodedAt("type", caseStyle: .snakeCase)
+@ContentAt("data")
+enum PaymentMethod {
+    case card(Card)
+}
+// encodes as: {"type": "card", "data": {"last4": "1234"}}
+```
+
 #### Combining with @AllOfCodable
 
 Use `@AllOfCodable` to compose a `@TaggedCodable` enum together with other fields into one flat JSON object:
@@ -380,6 +447,20 @@ Build-in presets:
 - **BoolTrue** - true by default, **BoolFalse** - false by default
 - **IntZero** - Int(0) by default
 - **DoubleZero** - Double(0) by default
+
+#### @AbsentDefault
+
+Use `@AbsentDefault` to use the property's initial value when its key is absent. Unlike `@DefaultValue`, a key that is present with a malformed value still throws.
+
+```swift
+@Codable
+struct Settings {
+  @AbsentDefault
+  var retries: Int = 3
+}
+// {}                  -> retries == 3
+// {"retries": "x"}    throws
+```
 
 #### @ValueCodable
 

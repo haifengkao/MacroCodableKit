@@ -61,9 +61,9 @@ public macro DefaultValue<Provider: DefaultValueProvider>(
 /// present with a malformed value still throws, unlike ``DefaultValue(_:)``.
 /// ```swift
 /// @Codable
-/// struct Observation {
+/// struct Settings {
 ///     @AbsentDefault
-///     var capture: Capture = .ok
+///     var retries: Int = 3
 /// }
 /// ```
 @attached(peer)

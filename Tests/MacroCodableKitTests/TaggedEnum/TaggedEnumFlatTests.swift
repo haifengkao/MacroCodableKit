@@ -10,7 +10,7 @@ import XCTest
 @CodedAt("type", caseStyle: .snakeCase, keyStyle: .snakeCase)
 private enum FlatEvent: Equatable {
     case ping
-    case drawBox(boxURL: String, retryCount: Int = 3, note: String?)
+    case drawBox(boxLabel: String, retryCount: Int = 3, note: String?)
     @CaseTag("legacy")
     case renamed(container: String)
 }
@@ -31,15 +31,15 @@ final class TaggedEnumFlatTests: XCTestCase {
     func test_flat_parameters_are_siblings_of_the_tag() throws {
         XCTAssertEqual(try encode(FlatEvent.ping), #"{"type":"ping"}"#)
         XCTAssertEqual(
-            try encode(FlatEvent.drawBox(boxURL: "a", retryCount: 1, note: nil)),
-            #"{"box_url":"a","retry_count":1,"type":"draw_box"}"#
+            try encode(FlatEvent.drawBox(boxLabel: "a", retryCount: 1, note: nil)),
+            #"{"box_label":"a","retry_count":1,"type":"draw_box"}"#
         )
     }
 
     func test_parameter_default_applies_only_when_key_is_absent() throws {
-        let absent = Data(#"{"type":"draw_box","box_url":"a"}"#.utf8)
-        XCTAssertEqual(try JSONDecoder().decode(FlatEvent.self, from: absent), .drawBox(boxURL: "a", retryCount: 3, note: nil))
-        let malformed = Data(#"{"type":"draw_box","box_url":"a","retry_count":"x"}"#.utf8)
+        let absent = Data(#"{"type":"draw_box","box_label":"a"}"#.utf8)
+        XCTAssertEqual(try JSONDecoder().decode(FlatEvent.self, from: absent), .drawBox(boxLabel: "a", retryCount: 3, note: nil))
+        let malformed = Data(#"{"type":"draw_box","box_label":"a","retry_count":"x"}"#.utf8)
         XCTAssertThrowsError(try JSONDecoder().decode(FlatEvent.self, from: malformed))
     }
 
