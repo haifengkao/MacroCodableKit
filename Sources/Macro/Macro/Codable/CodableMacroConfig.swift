@@ -20,9 +20,21 @@ struct CodableMacroConfig {
     }
 
     let caseStyle: CaseStyleTransformer
+    let isStrict: Bool
+    let isValidated: Bool
 
-    init(caseStyle: CaseStyleTransformer = CaseStyleTransformer(memberName: "verbatim")) {
+    init(
+        caseStyle: CaseStyleTransformer = CaseStyleTransformer(memberName: "verbatim"),
+        isStrict: Bool = false,
+        isValidated: Bool = false
+    ) {
         self.caseStyle = caseStyle
+        self.isStrict = isStrict
+        self.isValidated = isValidated
+    }
+
+    static func isEnabled(_ label: String, in args: LabeledExprListSyntax) -> Bool {
+        args.first { $0.label?.text == label }?.expression.as(BooleanLiteralExprSyntax.self)?.literal.tokenKind == .keyword(.true)
     }
 
     init(node: AttributeSyntax) {
@@ -31,11 +43,11 @@ struct CodableMacroConfig {
             return
         }
 
-        if let styleArg = args.first(where: { $0.label?.text == "caseStyle" }),
-           let member = styleArg.expression.as(MemberAccessExprSyntax.self) {
-            self.init(caseStyle: CaseStyleTransformer(memberName: member.declName.baseName.text))
-        } else {
-            self.init()
-        }
+        let member = args.first { $0.label?.text == "caseStyle" }?.expression.as(MemberAccessExprSyntax.self)
+        self.init(
+            caseStyle: CaseStyleTransformer(memberName: member?.declName.baseName.text ?? "verbatim"),
+            isStrict: Self.isEnabled("strict", in: args),
+            isValidated: Self.isEnabled("validated", in: args)
+        )
     }
 }

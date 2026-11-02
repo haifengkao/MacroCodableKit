@@ -26,6 +26,9 @@
 /// }
 /// ```
 ///
+/// Use `strict: true` to throw when the JSON has a key the type doesn't declare, and `validated: true` to call
+/// `try validate()` after decoding. Optional properties may still be absent.
+///
 /// If you need only `Decodable` or `Encodable` use ``Decodable()`` or ``Encodable()`` respectively
 ///
 /// **Adjust coding behaviour**:
@@ -101,7 +104,7 @@
 /// - Handle decoding errors with ``CustomCodingDecoding/errorHandler`` in ``CustomCodingDecoding``
 /// - Handle encoding errors with ``CustomCodingEncoding/errorHandler`` in ``CustomCodingEncoding``
 @attached(extension, conformances: Decodable, Encodable, names: named(CodingKeys), named(init(from:)), named(encode(to:)))
-public macro Codable(caseStyle: CaseStyle = .verbatim) = #externalMacro(module: "Macro", type: "CodableMacro")
+public macro Codable(caseStyle: CaseStyle = .verbatim, strict: Bool = false, validated: Bool = false) = #externalMacro(module: "Macro", type: "CodableMacro")
 
 /// Generates `Decodable` conformance respecting property annotations.
 ///
@@ -117,7 +120,7 @@ public macro Codable(caseStyle: CaseStyle = .verbatim) = #externalMacro(module: 
 ///
 /// `caseStyle:` applies to generated default keys here as well, while `@CodingKey(...)` still wins for explicitly annotated properties.
 @attached(extension, conformances: Decodable, names: named(CodingKeys), named(init(from:)))
-public macro Decodable(caseStyle: CaseStyle = .verbatim) = #externalMacro(module: "Macro", type: "DecodableMacro")
+public macro Decodable(caseStyle: CaseStyle = .verbatim, strict: Bool = false, validated: Bool = false) = #externalMacro(module: "Macro", type: "DecodableMacro")
 
 /// Generates `Encodable` conformance respecting property annotations.
 ///

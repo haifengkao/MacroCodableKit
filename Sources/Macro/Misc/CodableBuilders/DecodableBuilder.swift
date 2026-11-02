@@ -17,6 +17,8 @@ struct DecodableBuilder: CodeBuildable {
         let accessModifier: AccessModifier?
         let strategy: CodableStrategy
         let items: [Item]
+        var isStrict = false
+        var isValidated = false
     }
 
     private let buildingData: BuildingData
@@ -37,10 +39,18 @@ struct DecodableBuilder: CodeBuildable {
                     "let container = try decoder.container(keyedBy: CodingKeys.self)"
                 }
 
+                if buildingData.isStrict {
+                    "try StrictDecoding.rejectUnknownKeys(in: decoder, allowed: CodingKeys.allCases)"
+                }
+
                 buildingData.items
                     .map { item in
                         "self.\(item.identifier) = \(item.function.build())"
                     }
+            }
+
+            if buildingData.isValidated {
+                "try validate()"
             }
         }.build()
     }

@@ -12,9 +12,40 @@ enum TaggedEnumMacroBase {
     struct Config {
         let tagKey: String
         let tagIdentifier: String       // camelCase Swift identifier for CodingKeys
-        let paramsKey: String
-        let paramsIdentifier: String    // camelCase Swift identifier for CodingKeys
+        /// nil = internally tagged: associated values are siblings of the tag.
+        let paramsKey: String?
+        let paramsIdentifier: String?   // camelCase Swift identifier for CodingKeys
         let caseStyle: CaseStyleTransformer
+        let keyStyle: CaseStyleTransformer
+        let isStrict: Bool
+        let isValidated: Bool
+    }
+
+    /// Per-case data that only the raw syntax exposes.
+    struct CaseAnnotations {
+        var tags: [String: String] = [:]
+        var defaults: [String: [String: String]] = [:]
+
+        init(_ declaration: some DeclGroupSyntax) {
+            for member in declaration.memberBlock.members {
+                guard let caseDecl = member.decl.as(EnumCaseDeclSyntax.self) else { continue }
+                let tag = caseDecl.attributes
+                    .compactMap { $0.as(AttributeSyntax.self) }
+                    .first { $0.attributeName.trimmedDescription == "CaseTag" }
+                    .flatMap { TaggedEnumMacroBase.firstStringArgument(of: $0) }
+                for element in caseDecl.elements {
+                    if let tag { tags[element.name.text] = tag }
+                    for param in element.parameterClause?.parameters ?? [] {
+                        guard let label = param.firstName?.text, let value = param.defaultValue?.value else { continue }
+                        defaults[element.name.text, default: [:]][label] = value.trimmedDescription
+                    }
+                }
+            }
+        }
+
+        func tag(of enumCase: String, config: Config) -> String {
+            tags[enumCase] ?? config.caseStyle.transform(enumCase)
+        }
     }
 
     struct CaseStyleTransformer {
@@ -63,7 +94,7 @@ enum TaggedEnumMacroBase {
             context.diagnose(
                 SimpleDiagnosticMessage
                     .error(
-                        message: "'@\(MacroConfiguration.current.name)' requires both '@CodedAt' and '@ContentAt'",
+                        message: "'@\(MacroConfiguration.current.name)' requires '@CodedAt'",
                         diagnosticID: MessageID(domain: MacroConfiguration.current.name, id: "missingAnnotations")
                     )
                     .diagnose(at: declaration)
@@ -71,12 +102,15 @@ enum TaggedEnumMacroBase {
             return []
         }
 
+        guard verifyCases(enumDecl, config: config, declaration: declaration, in: context) else { return [] }
+
         let accessModifier: AccessModifier? = enumDecl.isPublic ? .public : nil
 
         let rawCode = buildExtension(
             typeName: type.trimmedDescription,
             enumDecl: enumDecl,
             config: config,
+            annotations: CaseAnnotations(declaration),
             accessModifier: accessModifier,
             conformances: conformancesToGenerate
         )
@@ -107,26 +141,61 @@ enum TaggedEnumMacroBase {
         return [extensionDecl]
     }
 
+    // MARK: - Verification
+
+    private static func verifyCases(
+        _ enumDecl: Enum,
+        config: Config,
+        declaration: some DeclGroupSyntax,
+        in context: some MacroExpansionContext
+    ) -> Bool {
+        var isValid = true
+        func fail(_ message: String, id: String) {
+            isValid = false
+            context.diagnose(
+                SimpleDiagnosticMessage
+                    .error(message: message, diagnosticID: MessageID(domain: MacroConfiguration.current.name, id: id))
+                    .diagnose(at: declaration)
+            )
+        }
+        for enumCase in enumDecl.cases {
+            guard case let .associatedValue(params) = enumCase.value else { continue }
+            if config.paramsKey != nil, params.count == 1, params[0].label == nil { continue }
+            if params.contains(where: { $0.label == nil }) {
+                fail("Case '\(enumCase.identifier)' needs labels on its associated values: the label is the JSON key", id: "unlabeledParameter")
+            }
+            if config.paramsKey == nil {
+                for label in params.compactMap(\.label) where config.keyStyle.transform(label) == config.tagKey || label == config.tagIdentifier {
+                    fail("Case '\(enumCase.identifier)' parameter '\(label)' collides with tag key '\(config.tagKey)'", id: "tagCollision")
+                }
+            }
+        }
+        return isValid
+    }
+
     // MARK: - Config Parsing
 
     static func parseConfig(from attributes: AttributeListSyntax) -> Config? {
         guard
-            let (tagKey, transformer) = parseCodedAt(from: attributes),
-            let paramsKey = parseContentAt(from: attributes)
+            let (tagKey, transformer, keyStyle, isStrict, isValidated) = parseCodedAt(from: attributes)
         else { return nil }
+        let paramsKey = parseContentAt(from: attributes)
 
         return Config(
             tagKey: tagKey,
             tagIdentifier: snakeToCamel(tagKey),
             paramsKey: paramsKey,
-            paramsIdentifier: snakeToCamel(paramsKey),
-            caseStyle: transformer
+            paramsIdentifier: paramsKey.map(snakeToCamel),
+            caseStyle: transformer,
+            keyStyle: keyStyle,
+            isStrict: isStrict,
+            isValidated: isValidated
         )
     }
 
     private static func parseCodedAt(
         from attributes: AttributeListSyntax
-    ) -> (String, CaseStyleTransformer)? {
+    ) -> (String, CaseStyleTransformer, CaseStyleTransformer, Bool, Bool)? {
         guard
             let attr = attributes
                 .compactMap({ $0.as(AttributeSyntax.self) })
@@ -139,27 +208,40 @@ enum TaggedEnumMacroBase {
 
         let tagKey = segment.content.text
 
-        var styleName = "verbatim"
-        if let styleArg = args.first(where: { $0.label?.text == "caseStyle" }),
-           let member = styleArg.expression.as(MemberAccessExprSyntax.self) {
-            styleName = member.declName.baseName.text
+        func style(_ label: String) -> CaseStyleTransformer {
+            let member = args.first { $0.label?.text == label }?.expression.as(MemberAccessExprSyntax.self)
+            return CaseStyleTransformer(memberName: member?.declName.baseName.text ?? "verbatim")
         }
 
-        return (tagKey, CaseStyleTransformer(memberName: styleName))
+        return (
+            tagKey,
+            style("caseStyle"),
+            style("keyStyle"),
+            CodableMacroConfig.isEnabled("strict", in: args),
+            CodableMacroConfig.isEnabled("validated", in: args)
+        )
     }
 
     private static func parseContentAt(from attributes: AttributeListSyntax) -> String? {
+        attributes
+            .compactMap { $0.as(AttributeSyntax.self) }
+            .first { $0.attributeName.trimmedDescription == "ContentAt" }
+            .flatMap { firstStringArgument(of: $0) }
+    }
+
+    fileprivate static func firstStringArgument(of attribute: AttributeSyntax) -> String? {
         guard
-            let attr = attributes
-                .compactMap({ $0.as(AttributeSyntax.self) })
-                .first(where: { $0.attributeName.trimmedDescription == "ContentAt" }),
-            case let .argumentList(args) = attr.arguments,
-            let firstArg = args.first,
-            let strLit = firstArg.expression.as(StringLiteralExprSyntax.self),
+            case let .argumentList(args) = attribute.arguments,
+            let strLit = args.first?.expression.as(StringLiteralExprSyntax.self),
             let segment = strLit.segments.first?.as(StringSegmentSyntax.self)
         else { return nil }
 
         return segment.content.text
+    }
+
+    private static func keyRawValue(_ label: String, config: Config) -> String {
+        let key = config.keyStyle.transform(label)
+        return key == label ? "" : " = \"\(key)\""
     }
 
     private static func snakeToCamel(_ key: String) -> String {
@@ -174,6 +256,7 @@ enum TaggedEnumMacroBase {
         typeName: String,
         enumDecl: Enum,
         config: Config,
+        annotations: CaseAnnotations,
         accessModifier: AccessModifier?,
         conformances: Set<Conformance>
     ) -> String {
@@ -186,35 +269,46 @@ enum TaggedEnumMacroBase {
         lines.append("extension \(typeName): \(conformanceList) {")
 
         // Per-case CodingKeys for cases with associated values
-        for enumCase in enumDecl.cases {
-            guard case let .associatedValue(params) = enumCase.value else { continue }
-            let name = perCaseCodingKeysName(enumCase.identifier)
-            lines.append("private enum \(name): String, CodingKey {")
-            for param in params where param.label != nil {
-                lines.append("case \(param.label!)")
+        if config.paramsKey != nil {
+            for enumCase in enumDecl.cases {
+                guard case let .associatedValue(params) = enumCase.value, directPayload(params) == nil else { continue }
+                let name = perCaseCodingKeysName(enumCase.identifier)
+                lines.append("private enum \(name): String, CodingKey\(config.isStrict ? ", CaseIterable" : "") {")
+                for param in params where param.label != nil {
+                    lines.append("case \(param.label!)\(keyRawValue(param.label!, config: config))")
+                }
+                lines.append("}")
             }
-            lines.append("}")
         }
 
         // Outer CodingKeys
         let tagId = config.tagIdentifier
         let tagRaw = tagId != config.tagKey ? " = \"\(config.tagKey)\"" : ""
-        let paramsId = config.paramsIdentifier
-        let paramsRaw = paramsId != config.paramsKey ? " = \"\(config.paramsKey)\"" : ""
 
         lines.append("\(access)enum CodingKeys: String, CodingKey, CaseIterable, Sendable, Hashable {")
         lines.append("case \(tagId)\(tagRaw)")
-        lines.append("case \(paramsId)\(paramsRaw)")
+        if let paramsId = config.paramsIdentifier, let paramsKey = config.paramsKey {
+            lines.append("case \(paramsId)\(paramsId != paramsKey ? " = \"\(paramsKey)\"" : "")")
+        } else {
+            // Internally tagged: every parameter label of every case shares the tag's container.
+            var seen = Set<String>()
+            for enumCase in enumDecl.cases {
+                guard case let .associatedValue(params) = enumCase.value else { continue }
+                for label in params.compactMap(\.label) where seen.insert(label).inserted {
+                    lines.append("case \(label)\(keyRawValue(label, config: config))")
+                }
+            }
+        }
         lines.append("}")
 
         // init(from:)
         if conformances.contains(.Decodable) {
-            lines += buildDecoder(enumDecl: enumDecl, config: config, tagId: tagId, paramsId: paramsId, access: access)
+            lines += buildDecoder(enumDecl: enumDecl, config: config, annotations: annotations, access: access)
         }
 
         // encode(to:)
         if conformances.contains(.Encodable) {
-            lines += buildEncoder(enumDecl: enumDecl, config: config, tagId: tagId, paramsId: paramsId, access: access)
+            lines += buildEncoder(enumDecl: enumDecl, config: config, annotations: annotations, access: access)
         }
 
         lines.append("}")
@@ -224,32 +318,54 @@ enum TaggedEnumMacroBase {
     private static func buildDecoder(
         enumDecl: Enum,
         config: Config,
-        tagId: String,
-        paramsId: String,
+        annotations: CaseAnnotations,
         access: String
     ) -> [String] {
         var lines: [String] = []
         lines.append("\(access)init(from decoder: Decoder) throws {")
         lines.append("let container = try decoder.container(keyedBy: CodingKeys.self)")
-        lines.append("let tag = try container.decode(String.self, forKey: .\(tagId))")
+        lines.append("let tag = try container.decode(String.self, forKey: .\(config.tagIdentifier))")
         lines.append("switch tag {")
 
         for enumCase in enumDecl.cases {
-            let tagValue = config.caseStyle.transform(enumCase.identifier)
-            lines.append("case \"\(tagValue)\":")
+            lines.append("case \"\(annotations.tag(of: enumCase.identifier, config: config))\":")
 
             switch enumCase.value {
             case nil:
+                if config.isStrict { lines.append(rejectUnknownKeys(in: "decoder", allowed: [".\(config.tagIdentifier)"])) }
                 lines.append("self = .\(enumCase.identifier)")
 
             case .associatedValue(let params):
-                let keysType = perCaseCodingKeysName(enumCase.identifier)
-                lines.append("let params = try container.nestedContainer(keyedBy: \(keysType).self, forKey: .\(paramsId))")
+                if let payload = directPayload(params), let paramsId = config.paramsIdentifier {
+                    if config.isStrict { lines.append(rejectUnknownKeys(in: "decoder", allowed: [".\(config.tagIdentifier)", ".\(paramsId)"])) }
+                    let typeName = payload.type.typeDescription(preservingOptional: false)
+                    let fn = payload.type.isOptional ? "decodeIfPresent" : "decode"
+                    lines.append("self = .\(enumCase.identifier)(try container.\(fn)(\(typeName), forKey: .\(paramsId)))")
+                    continue
+                }
+                var source = "container"
+                let labels = params.compactMap(\.label)
+                if let paramsId = config.paramsIdentifier {
+                    let keysType = perCaseCodingKeysName(enumCase.identifier)
+                    source = "params"
+                    lines.append("let params = try container.nestedContainer(keyedBy: \(keysType).self, forKey: .\(paramsId))")
+                    if config.isStrict {
+                        lines.append(rejectUnknownKeys(in: "decoder", allowed: [".\(config.tagIdentifier)", ".\(paramsId)"]))
+                        lines.append(
+                            "try StrictDecoding.rejectUnknownKeys(in: container.superDecoder(forKey: .\(paramsId)), allowed: \(keysType).allCases)"
+                        )
+                    }
+                } else if config.isStrict {
+                    lines.append(rejectUnknownKeys(in: "decoder", allowed: ([config.tagIdentifier] + labels).map { ".\($0)" }))
+                }
                 let argList = params.compactMap { p -> String? in
                     guard let label = p.label else { return nil }
                     let typeName = p.type.typeDescription(preservingOptional: false)
+                    if let defaultValue = annotations.defaults[enumCase.identifier]?[label] {
+                        return "\(label): try \(source).decodeIfPresent(\(typeName), forKey: .\(label)) ?? \(defaultValue)"
+                    }
                     let fn = p.type.isOptional ? "decodeIfPresent" : "decode"
-                    return "\(label): try params.\(fn)(\(typeName), forKey: .\(label))"
+                    return "\(label): try \(source).\(fn)(\(typeName), forKey: .\(label))"
                 }.joined(separator: ", ")
                 lines.append("self = .\(enumCase.identifier)(\(argList))")
 
@@ -263,6 +379,7 @@ enum TaggedEnumMacroBase {
             "throw DecodingError.dataCorrupted(.init(codingPath: container.codingPath, debugDescription: \"Unknown \\(tag)\"))"
         )
         lines.append("}")
+        if config.isValidated { lines.append("try validate()") }
         lines.append("}")
         return lines
     }
@@ -270,33 +387,46 @@ enum TaggedEnumMacroBase {
     private static func buildEncoder(
         enumDecl: Enum,
         config: Config,
-        tagId: String,
-        paramsId: String,
+        annotations: CaseAnnotations,
         access: String
     ) -> [String] {
+        // Flat parameter labels become local bindings next to the container, so it must not share a name with them.
+        let container = config.paramsKey == nil ? "taggedContainer" : "container"
         var lines: [String] = []
         lines.append("\(access)func encode(to encoder: Encoder) throws {")
-        lines.append("var container = encoder.container(keyedBy: CodingKeys.self)")
+        lines.append("var \(container) = encoder.container(keyedBy: CodingKeys.self)")
         lines.append("switch self {")
 
         for enumCase in enumDecl.cases {
-            let tagValue = config.caseStyle.transform(enumCase.identifier)
+            let tagValue = annotations.tag(of: enumCase.identifier, config: config)
+            let writeTag = "try \(container).encode(\"\(tagValue)\", forKey: .\(config.tagIdentifier))"
 
             switch enumCase.value {
             case nil:
                 lines.append("case .\(enumCase.identifier):")
-                lines.append("try container.encode(\"\(tagValue)\", forKey: .\(tagId))")
+                lines.append(writeTag)
 
             case .associatedValue(let params):
-                let keysType = perCaseCodingKeysName(enumCase.identifier)
+                if let payload = directPayload(params), let paramsId = config.paramsIdentifier {
+                    lines.append("case let .\(enumCase.identifier)(payload):")
+                    lines.append(writeTag)
+                    let fn = payload.type.isOptional ? "encodeIfPresent" : "encode"
+                    lines.append("try \(container).\(fn)(payload, forKey: .\(paramsId))")
+                    continue
+                }
                 let bindings = params.compactMap(\.label).joined(separator: ", ")
                 lines.append("case let .\(enumCase.identifier)(\(bindings)):")
-                lines.append("try container.encode(\"\(tagValue)\", forKey: .\(tagId))")
-                lines.append("var params = container.nestedContainer(keyedBy: \(keysType).self, forKey: .\(paramsId))")
+                lines.append(writeTag)
+                var target = container
+                if let paramsId = config.paramsIdentifier {
+                    let keysType = perCaseCodingKeysName(enumCase.identifier)
+                    target = "params"
+                    lines.append("var params = \(container).nestedContainer(keyedBy: \(keysType).self, forKey: .\(paramsId))")
+                }
                 for param in params {
                     guard let label = param.label else { continue }
                     let fn = param.type.isOptional ? "encodeIfPresent" : "encode"
-                    lines.append("try params.\(fn)(\(label), forKey: .\(label))")
+                    lines.append("try \(target).\(fn)(\(label), forKey: .\(label))")
                 }
 
             default:
@@ -307,6 +437,15 @@ enum TaggedEnumMacroBase {
         lines.append("}")
         lines.append("}")
         return lines
+    }
+
+    /// The value of a case with one unlabeled associated value, which is stored directly at the content key.
+    private static func directPayload(_ params: [EnumCaseAssociatedValueParameter]) -> EnumCaseAssociatedValueParameter? {
+        params.count == 1 && params[0].label == nil ? params[0] : nil
+    }
+
+    private static func rejectUnknownKeys(in decoder: String, allowed: [String]) -> String {
+        "try StrictDecoding.rejectUnknownKeys(in: \(decoder), allowed: [\(allowed.map { "CodingKeys\($0)" }.joined(separator: ", "))])"
     }
 
     private static func perCaseCodingKeysName(_ caseName: String) -> String {

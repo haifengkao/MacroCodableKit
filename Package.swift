@@ -67,6 +67,7 @@ let package = Package(
                 "Macro",
                 "MacroCodableKit",
                 .product(name: "SwiftSyntaxMacrosTestSupport", package: "swift-syntax"),
+                .product(name: "SwiftSyntaxMacroExpansion", package: "swift-syntax"),
                 .product(name: "MacroTesting", package: "swift-macro-testing"),
             ]
         ),

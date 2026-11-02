@@ -58,7 +58,9 @@ final class InstanceExpander {
             decodingBuildingData = try DecodableBuilder.verify(
                 accessModifier: accessModifier,
                 strategy: strategy,
-                instance: instance
+                instance: instance,
+                isStrict: config.isStrict,
+                isValidated: config.isValidated
             )
         } else {
             decodingBuildingData = nil

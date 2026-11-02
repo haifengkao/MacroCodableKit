@@ -6,12 +6,16 @@
 //
 
 import MacroToolkit
+import SwiftDiagnostics
+import SwiftSyntax
 
 extension DecodableBuilder {
     static func verify(
         accessModifier: AccessModifier?,
         strategy: CodableStrategy,
-        instance: Instance
+        instance: Instance,
+        isStrict: Bool = false,
+        isValidated: Bool = false
     ) throws -> DecodableBuilder.BuildingData {
         try DecodableBuilder.BuildingData(
             accessModifier: accessModifier,
@@ -38,7 +42,9 @@ extension DecodableBuilder {
                     }
 
                     return makeItem(variable: variable, strategy: strategy, knownAttributes: knownAttributes)
-                }
+                },
+            isStrict: isStrict && strategy == .codingKeys,
+            isValidated: isValidated
         )
     }
 
@@ -54,6 +60,28 @@ extension DecodableBuilder {
         else {
             assertionFailure("`Variable.verify(...)` should've caught it")
             return nil
+        }
+
+        if knownAttributes[.absentDefault] != nil {
+            guard
+                let initializer = variable._syntax.bindings.first?.initializer?.value,
+                variable._syntax.bindingSpecifier.tokenKind == .keyword(.var)
+            else {
+                MacroConfiguration.current.context.diagnose(
+                    SimpleDiagnosticMessage
+                        .error(
+                            message: "'@AbsentDefault' requires a 'var' with an initial value",
+                            diagnosticID: MessageID(domain: MacroConfiguration.current.name, id: "absentDefaultInitializer")
+                        )
+                        .diagnose(at: variable._syntax)
+                )
+                return nil
+            }
+            let typeName = type.typeDescription(preservingOptional: false)
+            return DecodableBuilder.BuildingData.Item(
+                identifier: identifier,
+                function: "try container.decodeIfPresent(\(typeName), forKey: .\(identifier)) ?? \(initializer.trimmedDescription)"
+            )
         }
 
         let function: FunctionBuilder

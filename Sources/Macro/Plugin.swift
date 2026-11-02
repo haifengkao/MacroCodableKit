@@ -31,11 +31,13 @@
             TaggedCodableMacro.self,
             CodedAtMacro.self,
             ContentAtMacro.self,
+            CaseTagMacro.self,
 
             // Coding customization
             CodingKeyMacro.self,
             OmitCodingMacro.self,
             DefaultValueMacro.self,
+            AbsentDefaultMacro.self,
             ValueStrategyMacro.self,
             CustomCodingMacro.self,
         ]

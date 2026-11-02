@@ -57,6 +57,18 @@ public macro DefaultValue<Provider: DefaultValueProvider>(
     _ type: Provider.Type
 ) = #externalMacro(module: "Macro", type: "DefaultValueMacro")
 
+/// Uses the property's initial value when its key is absent. A key that is
+/// present with a malformed value still throws, unlike ``DefaultValue(_:)``.
+/// ```swift
+/// @Codable
+/// struct Observation {
+///     @AbsentDefault
+///     var capture: Capture = .ok
+/// }
+/// ```
+@attached(peer)
+public macro AbsentDefault() = #externalMacro(module: "Macro", type: "AbsentDefaultMacro")
+
 /// Customizes decoding and encoding of a specific type
 ///
 /// If your type is generic or it can't be described a static one, for example, `Array<Element>` with an unknown generic `Element` type, then you should use ``CustomCoding(_:)``
