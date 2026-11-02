@@ -219,6 +219,41 @@ This encodes/decodes the following JSON shapes:
 > **Note**
 > Cases with no associated values omit the params key entirely when encoding, and tolerate its absence when decoding.
 
+MacroCodableKit only generates `Codable`. It can't refer to a case without its associated values, and it can't encode an enum as a bare string with a case style. For both, use [IdentifiedEnumCases](https://github.com/haifengkao/IdentifiedEnumCases).
+
+To get a `CaseID` for a `@TaggedCodable` enum, attach both macros. Keep the two `caseStyle` arguments the same if you want `CaseID.rawValue` to match the JSON tag:
+
+```swift
+import IdentifiedEnumCases
+import MacroCodableKit
+
+@IdentifiedEnumCases(caseStyle: .screamingSnakeCase)
+@TaggedCodable
+@CodedAt("type", caseStyle: .screamingSnakeCase)
+@ContentAt("data")
+enum PaymentMethod {
+    case card(number: String, expiry: String)
+    case applePay(token: String)
+}
+
+PaymentMethod.card(number: "4242424242424242", expiry: "12/26").caseID == .card // true
+PaymentMethod.CaseID.applePay.rawValue // "APPLE_PAY"
+```
+
+To encode an enum with no associated values as a string, use `CaseIDCodable`:
+
+```swift
+import IdentifiedEnumCases
+
+@IdentifiedEnumCases(caseStyle: .snakeCase)
+enum Color: CaseIDCodable {
+    case lightBlue
+    case red
+}
+
+try JSONEncoder().encode(Color.lightBlue) // "light_blue"
+```
+
 #### `caseStyle` options
 
 The `caseStyle` parameter of `@CodedAt` controls how Swift case names map to the tag string in JSON:
