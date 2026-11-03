@@ -69,6 +69,28 @@ public macro DefaultValue<Provider: DefaultValueProvider>(
 @attached(peer)
 public macro AbsentDefault() = #externalMacro(module: "Macro", type: "AbsentDefaultMacro")
 
+/// Lets a value be written as just this property, with every other property at its default.
+///
+/// A struct may be encoded two ways: as the full keyed object, or as the value of its
+/// `@DefaultKey` property alone. Decoding accepts both; a value that isn't a keyed
+/// container is the default key's value, and every other property takes its default.
+/// Encoding writes the short form whenever every other property equals its default.
+/// ```swift
+/// @Codable
+/// struct Pattern: Equatable {
+///     @DefaultKey let include: String
+///     @AbsentDefault var exclude: [String] = []
+/// }
+/// // "^/$"                                  -> Pattern(include: "^/$")
+/// // {"include": "^/a", "exclude": ["^/b"]} -> Pattern(include: "^/a", exclude: ["^/b"])
+/// ```
+///
+/// - Only one property per type, non-optional, without other coding annotations.
+/// - Every other coded property must be Optional (default `nil`) or ``AbsentDefault()`` (default its initial value, compared with `==`).
+/// - The default key's own value must not encode as a keyed container, or the two forms can't be told apart.
+@attached(peer)
+public macro DefaultKey() = #externalMacro(module: "Macro", type: "DefaultKeyMacro")
+
 /// Customizes decoding and encoding of a specific type
 ///
 /// If your type is generic or it can't be described a static one, for example, `Array<Element>` with an unknown generic `Element` type, then you should use ``CustomCoding(_:)``

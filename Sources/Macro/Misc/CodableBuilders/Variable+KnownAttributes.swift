@@ -20,6 +20,8 @@ extension Variable {
                 result[.codingKey, default: []].append(codingKey)
             } else if attribute.attribute?.name._baseSyntax.name.trimmedDescription == "AbsentDefault" {
                 result[.absentDefault, default: []].append(true)
+            } else if attribute.attribute?.name._baseSyntax.name.trimmedDescription == "DefaultKey" {
+                result[.defaultKey, default: []].append(true)
             } else if let defaultValue = attribute.attribute.flatMap({ DefaultValue($0) }) {
                 result[.defaultValue, default: []].append(defaultValue)
             } else if let valueStrategy = attribute.attribute.flatMap({ ValueStrategy($0) }) {

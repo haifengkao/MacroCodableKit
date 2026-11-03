@@ -42,12 +42,15 @@ final class InstanceExpander {
             codingKeysBuildingData = nil
         }
 
+        let defaultKey = strategy == .codingKeys ? try DefaultKeyPlan.verify(instance: instance) : nil
+
         let encodingBuildingData: EncodableBuilder.BuildingData?
         if conformances.contains(.Encodable) {
             encodingBuildingData = try EncodableBuilder.verify(
                 accessModifier: accessModifier,
                 strategy: strategy,
-                instance: instance
+                instance: instance,
+                defaultKey: defaultKey
             )
         } else {
             encodingBuildingData = nil
@@ -60,7 +63,8 @@ final class InstanceExpander {
                 strategy: strategy,
                 instance: instance,
                 isStrict: config.isStrict,
-                isValidated: config.isValidated
+                isValidated: config.isValidated,
+                defaultKey: defaultKey
             )
         } else {
             decodingBuildingData = nil

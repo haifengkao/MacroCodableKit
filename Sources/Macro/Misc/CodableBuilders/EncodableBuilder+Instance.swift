@@ -11,7 +11,8 @@ extension EncodableBuilder {
     static func verify(
         accessModifier: AccessModifier?,
         strategy: CodableStrategy,
-        instance: Instance
+        instance: Instance,
+        defaultKey: DefaultKeyPlan? = nil
     ) throws -> EncodableBuilder.BuildingData {
         try EncodableBuilder.BuildingData(
             accessModifier: accessModifier,
@@ -38,7 +39,8 @@ extension EncodableBuilder {
                     }
 
                     return makeItem(variable: variable, strategy: strategy, knownAttributes: knownAttributes)
-                }
+                },
+            defaultKey: defaultKey
         )
     }
 

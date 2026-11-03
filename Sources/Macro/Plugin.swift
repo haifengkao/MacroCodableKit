@@ -38,6 +38,7 @@
             OmitCodingMacro.self,
             DefaultValueMacro.self,
             AbsentDefaultMacro.self,
+            DefaultKeyMacro.self,
             ValueStrategyMacro.self,
             CustomCodingMacro.self,
         ]

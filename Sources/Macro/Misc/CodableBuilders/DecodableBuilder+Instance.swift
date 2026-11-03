@@ -15,7 +15,8 @@ extension DecodableBuilder {
         strategy: CodableStrategy,
         instance: Instance,
         isStrict: Bool = false,
-        isValidated: Bool = false
+        isValidated: Bool = false,
+        defaultKey: DefaultKeyPlan? = nil
     ) throws -> DecodableBuilder.BuildingData {
         try DecodableBuilder.BuildingData(
             accessModifier: accessModifier,
@@ -44,7 +45,8 @@ extension DecodableBuilder {
                     return makeItem(variable: variable, strategy: strategy, knownAttributes: knownAttributes)
                 },
             isStrict: isStrict && strategy == .codingKeys,
-            isValidated: isValidated
+            isValidated: isValidated,
+            defaultKey: defaultKey
         )
     }
 

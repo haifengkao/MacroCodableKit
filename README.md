@@ -22,6 +22,7 @@ I remove the heavy swift-format dependency to reduce compile time and potential 
     - [@OmitCoding](#omitcoding)
     - [@DefaultValue](#defaultvalue)
     - [@AbsentDefault](#absentdefault)
+    - [@DefaultKey](#defaultkey)
     - [@ValueCodable](#valuecodable)
     - [@CustomCoding](#customcoding)
 - [Installation](#installation)
@@ -461,6 +462,27 @@ struct Settings {
 // {}                  -> retries == 3
 // {"retries": "x"}    throws
 ```
+
+#### @DefaultKey
+
+Use `@DefaultKey` when a value may be written as just one of its properties. A bare value is that property, with every other property at its default; an object is the full form.
+
+```swift
+@Codable
+struct Pattern: Equatable {
+  @DefaultKey let include: String
+  @AbsentDefault var exclude: [String] = []
+}
+// "^/$"                                  -> Pattern(include: "^/$")
+// {"include": "^/a", "exclude": ["^/b"]} -> Pattern(include: "^/a", exclude: ["^/b"])
+```
+
+Encoding writes the bare value whenever every other property equals its default, so a value round-trips to the same form. Rules, checked at compile time:
+
+- One `@DefaultKey` per type, on a non-optional property without other coding annotations.
+- Every other coded property is Optional (default `nil`) or `@AbsentDefault` (default its initial value, compared with `==`).
+
+The default key's own value must not be a keyed container, or the two forms can't be told apart. `strict:` and `validated:` apply to both forms.
 
 #### @ValueCodable
 

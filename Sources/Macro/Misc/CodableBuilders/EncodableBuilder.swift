@@ -17,6 +17,7 @@ struct EncodableBuilder: CodeBuildable {
         let accessModifier: AccessModifier?
         let strategy: CodableStrategy
         let items: [Item]
+        var defaultKey: DefaultKeyPlan?
     }
 
     private let buildingData: BuildingData
@@ -27,7 +28,16 @@ struct EncodableBuilder: CodeBuildable {
 
     func build() -> String {
         DeclarationBuilder(accessModifier: buildingData.accessModifier, signature: "func encode(to encoder: Encoder) throws") {
-            if buildingData.items.isEmpty {
+            if let defaultKey = buildingData.defaultKey, buildingData.strategy == .codingKeys {
+                let condition = defaultKey.fallbacks.map { "self.\($0.identifier) == \($0.value)" }.joined(separator: " && ")
+                "if \(condition.isEmpty ? "true" : condition) {"
+                "var container = encoder.singleValueContainer()"
+                "try container.encode(self.\(defaultKey.identifier))"
+                "return"
+                "}"
+                "var container = encoder.container(keyedBy: CodingKeys.self)"
+                buildingData.items.map { item in item.function }
+            } else if buildingData.items.isEmpty {
                 ""
             } else {
                 switch buildingData.strategy {
