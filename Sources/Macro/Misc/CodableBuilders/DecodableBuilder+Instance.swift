@@ -84,7 +84,7 @@ extension DecodableBuilder {
             }
             let typeName = type.typeDescription(preservingOptional: false)
             let function = defaultValue.throwsOnMalformed
-                ? "try container.decodeIfPresent(\(typeName), forKey: .\(identifier)) ?? \(fallback)"
+                ? "container.contains(.\(identifier)) ? try container.decode(\(typeName), forKey: .\(identifier)) : \(fallback)"
                 : "CustomCodingDecoding.decode(\(typeName), forKey: .\(identifier), container: container, default: \(fallback))"
             return DecodableBuilder.BuildingData.Item(identifier: identifier, function: function)
         }

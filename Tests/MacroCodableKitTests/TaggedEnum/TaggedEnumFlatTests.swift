@@ -61,6 +61,8 @@ final class TaggedEnumFlatTests: XCTestCase {
             StrictDefaults(count: 7, names: [], enabled: true)
         )
         XCTAssertThrowsError(try JSONDecoder().decode(StrictDefaults.self, from: Data(#"{"count":"x"}"#.utf8)))
+        XCTAssertThrowsError(try JSONDecoder().decode(StrictDefaults.self, from: Data(#"{"count":null}"#.utf8)))
+        XCTAssertThrowsError(try JSONDecoder().decode(StrictDefaults.self, from: Data(#"{"names":null}"#.utf8)))
         XCTAssertThrowsError(try JSONDecoder().decode(StrictDefaults.self, from: Data(#"{"enabled":"x"}"#.utf8)))
     }
 

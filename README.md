@@ -444,7 +444,7 @@ struct Settings {
 // {"retries": "x"}    throws
 ```
 
-`malformed:` decides what a present but undecodable value does: `.useDefault` (the default) uses the default and reports the error to `CustomCodingDecoding.errorHandler`; `.throwError` throws it. `@DefaultValue` doesn't affect encoding.
+`malformed:` decides what a present but undecodable value does: `.useDefault` (the default) uses the default and reports the error to `CustomCodingDecoding.errorHandler`; `.throwError` throws it. An explicit `null` counts as present, so with `.throwError` a non-optional property rejects it. `@DefaultValue` doesn't affect encoding.
 
 Build-in presets:
 

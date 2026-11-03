@@ -40,7 +40,7 @@ final class DefaultKeyMacroTests: XCTestCase {
                     init(from decoder: Decoder) throws {
                         if let container = try? decoder.container(keyedBy: CodingKeys.self) {
                             self.include = try container.decode(String.self, forKey: .include)
-                            self.exclude = try container.decodeIfPresent([String].self, forKey: .exclude) ?? []
+                            self.exclude = container.contains(.exclude) ? try container.decode([String].self, forKey: .exclude) : []
                             self.note = try container.decodeIfPresent(String.self, forKey: .note)
                         } else {
                             let container = try decoder.singleValueContainer()
