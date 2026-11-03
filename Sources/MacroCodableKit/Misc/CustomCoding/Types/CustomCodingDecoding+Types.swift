@@ -761,6 +761,23 @@ public extension CustomCodingDecoding {
 
     // MARK: K: Decodable
 
+    static func decode<K, T>(
+        _ type: T.Type,
+        forKey key: KeyedDecodingContainer<K>.Key,
+        container: KeyedDecodingContainer<K>,
+        default defaultValue: @autoclosure () -> T
+    ) -> T
+        where T: Decodable
+    {
+        do {
+            return try container.decodeIfPresent(type, forKey: key) ?? defaultValue()
+        } catch {
+            logError(error)
+
+            return defaultValue()
+        }
+    }
+
     static func decode<K, T, Provider>(
         _ type: T.Type,
         forKey key: KeyedDecodingContainer<K>.Key,

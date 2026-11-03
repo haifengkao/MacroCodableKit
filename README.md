@@ -21,7 +21,6 @@ I remove the heavy swift-format dependency to reduce compile time and potential 
     - [@CodingKey](#codingkey)
     - [@OmitCoding](#omitcoding)
     - [@DefaultValue](#defaultvalue)
-    - [@AbsentDefault](#absentdefault)
     - [@DefaultKey](#defaultkey)
     - [@ValueCodable](#valuecodable)
     - [@CustomCoding](#customcoding)
@@ -100,7 +99,7 @@ struct User {
     let name: String
 
     @CodingKey("is_verified")
-    @DefaultValue(BoolFalse)
+    @DefaultValue(BoolFalse.self)
     let isVerified: Bool
 }
 
@@ -431,37 +430,28 @@ struct Request {
 
 #### @DefaultValue
 
-Use `@DefaultValue<Provider: DefaultValueProvider>(_ type: Provider.Type)` to provide default value if decoding fails
-
-> **Warning**
-> `@DefaultValue(_:)` doesn't affect encoding
-
-```swift
-@Codable
-struct User {
-  @DefaultValue(BoolFalse) // property will be `false`, if value is absent or decoding fails
-  let isVerified: Bool
-}
-```
-
-Build-in presets:
-- **BoolTrue** - true by default, **BoolFalse** - false by default
-- **IntZero** - Int(0) by default
-- **DoubleZero** - Double(0) by default
-
-#### @AbsentDefault
-
-Use `@AbsentDefault` to use the property's initial value when its key is absent. Unlike `@DefaultValue`, a key that is present with a malformed value still throws.
+Use `@DefaultValue` to decode a default when the key is absent. The default comes from a `DefaultValueProvider`, or from the property's initial value when no provider is given:
 
 ```swift
 @Codable
 struct Settings {
-  @AbsentDefault
+  @DefaultValue(BoolFalse.self)            // absent or malformed -> false
+  let isVerified: Bool
+  @DefaultValue(malformed: .throwError)    // absent -> 3, malformed throws
   var retries: Int = 3
 }
-// {}                  -> retries == 3
+// {}                  -> isVerified == false, retries == 3
 // {"retries": "x"}    throws
 ```
+
+`malformed:` decides what a present but undecodable value does: `.useDefault` (the default) uses the default and reports the error to `CustomCodingDecoding.errorHandler`; `.throwError` throws it. `@DefaultValue` doesn't affect encoding.
+
+Build-in presets:
+
+- **BoolTrue** - true by default, **BoolFalse** - false by default
+- **EmptyString** - "" by default
+- **IntZero** - Int(0) by default
+- **DoubleZero** - Double(0) by default
 
 #### @DefaultKey
 
@@ -471,7 +461,7 @@ Use `@DefaultKey` when a value may be written as just one of its properties. A b
 @Codable
 struct Pattern: Equatable {
   @DefaultKey let include: String
-  @AbsentDefault var exclude: [String] = []
+  @DefaultValue(malformed: .throwError) var exclude: [String] = []
 }
 // "^/$"                                  -> Pattern(include: "^/$")
 // {"include": "^/a", "exclude": ["^/b"]} -> Pattern(include: "^/a", exclude: ["^/b"])
@@ -480,7 +470,7 @@ struct Pattern: Equatable {
 Encoding writes the bare value whenever every other property equals its default, so a value round-trips to the same form. Rules, checked at compile time:
 
 - One `@DefaultKey` per type, on a non-optional property without other coding annotations.
-- Every other coded property is Optional (default `nil`) or `@AbsentDefault` (default its initial value, compared with `==`).
+- Every other coded property is Optional (default `nil`) or `@DefaultValue` (compared with `==`).
 
 The default key's own value must not be a keyed container, or the two forms can't be told apart. `strict:` and `validated:` apply to both forms.
 
@@ -502,7 +492,7 @@ Can be combined with [DefaultValue](#DefaultValue)
 @Decodable
 struct Example {
     @ValueStrategy(SomeStringStrategy)
-    @DefaultValue(EmptyString)
+    @DefaultValue(EmptyString.self)
     let string: String
 }
 ```

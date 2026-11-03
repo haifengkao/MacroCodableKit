@@ -42,32 +42,45 @@ public macro OmitCoding() = #externalMacro(module: "Macro", type: "OmitCodingMac
 /// @Codable
 /// struct User {
 ///     let birthday: Date
-///     @DefaultValue(EmptyString)
+///     @DefaultValue(EmptyString.self)
 ///     let name: String
-///     @DefaultValue(BoolFalse)
+///     @DefaultValue(BoolFalse.self)
 ///     let isVerified: Bool
 /// }
 /// ```
 ///
-/// - If a value is decoded with an error, the default is returned by the given ``DefaultValueProvider``.
+/// - An absent key uses the default returned by the given ``DefaultValueProvider``.
+/// - A malformed value uses the default too, unless `malformed` is ``DefaultValueMalformed/throwError``.
 /// - Doesn't have effect on encoding.
 /// - During decoding, any non-thrown errors encountered is sent to ``CustomCodingDecoding/errorHandler``
 @attached(peer)
 public macro DefaultValue<Provider: DefaultValueProvider>(
-    _ type: Provider.Type
+    _ type: Provider.Type,
+    malformed: DefaultValueMalformed = .useDefault
 ) = #externalMacro(module: "Macro", type: "DefaultValueMacro")
 
-/// Uses the property's initial value when its key is absent. A key that is
-/// present with a malformed value still throws, unlike ``DefaultValue(_:)``.
+/// Uses the property's initial value as the default; the property must be a `var` with one.
 /// ```swift
 /// @Codable
 /// struct Settings {
-///     @AbsentDefault
+///     @DefaultValue(malformed: .throwError)
 ///     var retries: Int = 3
 /// }
+/// // {}                 -> retries == 3
+/// // {"retries": "x"}   throws
 /// ```
 @attached(peer)
-public macro AbsentDefault() = #externalMacro(module: "Macro", type: "AbsentDefaultMacro")
+public macro DefaultValue(
+    malformed: DefaultValueMalformed = .useDefault
+) = #externalMacro(module: "Macro", type: "DefaultValueMacro")
+
+/// What ``DefaultValue(_:malformed:)`` does when the key is present but its value can't be decoded.
+public enum DefaultValueMalformed: Sendable {
+    /// Use the default, as for an absent key; the error goes to ``CustomCodingDecoding/errorHandler``.
+    case useDefault
+    /// Throw the decoding error; only an absent key uses the default.
+    case throwError
+}
 
 /// Lets a value be written as just this property, with every other property at its default.
 ///
@@ -79,14 +92,14 @@ public macro AbsentDefault() = #externalMacro(module: "Macro", type: "AbsentDefa
 /// @Codable
 /// struct Pattern: Equatable {
 ///     @DefaultKey let include: String
-///     @AbsentDefault var exclude: [String] = []
+///     @DefaultValue(malformed: .throwError) var exclude: [String] = []
 /// }
 /// // "^/$"                                  -> Pattern(include: "^/$")
 /// // {"include": "^/a", "exclude": ["^/b"]} -> Pattern(include: "^/a", exclude: ["^/b"])
 /// ```
 ///
 /// - Only one property per type, non-optional, without other coding annotations.
-/// - Every other coded property must be Optional (default `nil`) or ``AbsentDefault()`` (default its initial value, compared with `==`).
+/// - Every other coded property must be Optional (default `nil`) or have a ``DefaultValue(malformed:)`` default (compared with `==`).
 /// - The default key's own value must not encode as a keyed container, or the two forms can't be told apart.
 @attached(peer)
 public macro DefaultKey() = #externalMacro(module: "Macro", type: "DefaultKeyMacro")

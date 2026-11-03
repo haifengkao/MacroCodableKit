@@ -60,7 +60,7 @@
 /// struct User {
 ///     let birthday: Date
 ///     let name: String
-///     @DefaultValue(BoolFalse)
+///     @DefaultValue(BoolFalse.self)
 ///     let isVerified: Bool
 /// }
 /// ```

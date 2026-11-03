@@ -9,7 +9,7 @@ final class DefaultKeyMacroTests: XCTestCase {
     private let macros: [String: SwiftSyntaxMacros.Macro.Type] = [
         "Codable": CodableMacro.self,
         "DefaultKey": DefaultKeyMacro.self,
-        "AbsentDefault": AbsentDefaultMacro.self,
+        "DefaultValue": DefaultValueMacro.self,
     ]
 
     func testExpansion() {
@@ -19,7 +19,7 @@ final class DefaultKeyMacroTests: XCTestCase {
                 @Codable
                 struct Pattern\(sutSuffix) {
                     @DefaultKey let include: String
-                    @AbsentDefault var exclude: [String] = []
+                    @DefaultValue(malformed: .throwError) var exclude: [String] = []
                     var note: String?
                 }
                 """
@@ -66,6 +66,28 @@ final class DefaultKeyMacroTests: XCTestCase {
         }
     }
 
+    func testDefaultValueNeedsInitializer() {
+        withMacroTesting(isRecording: isRecording, macros: macros) {
+            assertMacro {
+                """
+                @Codable
+                struct NoInitializer\(sutSuffix) {
+                    @DefaultValue(malformed: .throwError) let a: Int
+                }
+                """
+            } diagnostics: {
+                """
+                @Codable
+                struct NoInitializer__testing__ {
+                    @DefaultValue(malformed: .throwError) let a: Int
+                    ┬───────────────────────────────────────────────
+                    ╰─ 🛑 '@DefaultValue' without a provider requires a 'var' with an initial value
+                }
+                """
+            }
+        }
+    }
+
     func testDiagnostics() {
         withMacroTesting(isRecording: isRecording, macros: macros) {
             assertMacro {
@@ -102,7 +124,7 @@ final class DefaultKeyMacroTests: XCTestCase {
                     @DefaultKey let a: String
                     let b: Int
                     ┬─────────
-                    ╰─ 🛑 '@DefaultKey' needs every other coded property to be Optional or '@AbsentDefault'
+                    ╰─ 🛑 '@DefaultKey' needs every other coded property to be Optional or '@DefaultValue'
                 }
                 """
             }
@@ -119,7 +141,7 @@ final class DefaultKeyMacroTests: XCTestCase {
                 struct OptionalKey__testing__ {
                     @DefaultKey let a: String?
                     ┬─────────────────────────
-                    ╰─ 🛑 '@DefaultKey' needs a non-optional property without '@CustomCoding', '@ValueStrategy', '@DefaultValue' or '@AbsentDefault'
+                    ╰─ 🛑 '@DefaultKey' needs a non-optional property without '@CustomCoding', '@ValueStrategy' or '@DefaultValue'
                 }
                 """
             }

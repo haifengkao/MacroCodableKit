@@ -16,9 +16,16 @@ private enum FlatEvent: Equatable {
 }
 
 @Codable
-private struct AbsentDefaults: Equatable {
-    @AbsentDefault var count: Int = 7
-    @AbsentDefault var names: [String] = []
+private struct StrictDefaults: Equatable {
+    @DefaultValue(malformed: .throwError) var count: Int = 7
+    @DefaultValue(malformed: .throwError) var names: [String] = []
+    @DefaultValue(BoolTrue.self, malformed: .throwError) var enabled: Bool
+}
+
+@Codable
+private struct LenientDefaults: Equatable {
+    @DefaultValue var count: Int = 7
+    @DefaultValue(BoolTrue.self) var enabled: Bool
 }
 
 final class TaggedEnumFlatTests: XCTestCase {
@@ -48,9 +55,24 @@ final class TaggedEnumFlatTests: XCTestCase {
         XCTAssertEqual(try JSONDecoder().decode(FlatEvent.self, from: Data(#"{"type":"legacy","container":"c"}"#.utf8)), .renamed(container: "c"))
     }
 
-    func test_absent_default_uses_initializer_but_rejects_malformed() throws {
-        XCTAssertEqual(try JSONDecoder().decode(AbsentDefaults.self, from: Data("{}".utf8)), AbsentDefaults())
-        XCTAssertThrowsError(try JSONDecoder().decode(AbsentDefaults.self, from: Data(#"{"count":"x"}"#.utf8)))
+    func test_throwing_default_applies_only_when_key_is_absent() throws {
+        XCTAssertEqual(
+            try JSONDecoder().decode(StrictDefaults.self, from: Data("{}".utf8)),
+            StrictDefaults(count: 7, names: [], enabled: true)
+        )
+        XCTAssertThrowsError(try JSONDecoder().decode(StrictDefaults.self, from: Data(#"{"count":"x"}"#.utf8)))
+        XCTAssertThrowsError(try JSONDecoder().decode(StrictDefaults.self, from: Data(#"{"enabled":"x"}"#.utf8)))
+    }
+
+    func test_lenient_default_also_replaces_malformed() throws {
+        XCTAssertEqual(
+            try JSONDecoder().decode(LenientDefaults.self, from: Data(#"{"count":"x","enabled":"x"}"#.utf8)),
+            LenientDefaults(count: 7, enabled: true)
+        )
+        XCTAssertEqual(
+            try JSONDecoder().decode(LenientDefaults.self, from: Data(#"{"count":2,"enabled":false}"#.utf8)),
+            LenientDefaults(count: 2, enabled: false)
+        )
     }
 
     private let macroSpecs: [String: MacroSpec] = [

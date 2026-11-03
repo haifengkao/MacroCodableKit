@@ -5,7 +5,7 @@ import XCTest
 @Codable(caseStyle: .snakeCase, strict: true)
 private struct Pattern: Equatable {
     @DefaultKey let include: String
-    @AbsentDefault var exclude: [String] = []
+    @DefaultValue(malformed: .throwError) var exclude: [String] = []
     var note: String?
 
     init(include: String, exclude: [String] = [], note: String? = nil) {

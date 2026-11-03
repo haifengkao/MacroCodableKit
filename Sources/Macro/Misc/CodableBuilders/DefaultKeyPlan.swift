@@ -50,27 +50,27 @@ struct DefaultKeyPlan {
             ownAttributes[.customCoding] == nil,
             ownAttributes[.valueStrategy] == nil,
             ownAttributes[.defaultValue] == nil,
-            ownAttributes[.absentDefault] == nil,
             !defaultKey.type.isOptional
         else {
             throw diagnose(
-                "'@DefaultKey' needs a non-optional property without '@CustomCoding', '@ValueStrategy', '@DefaultValue' or '@AbsentDefault'",
+                "'@DefaultKey' needs a non-optional property without '@CustomCoding', '@ValueStrategy' or '@DefaultValue'",
                 id: "defaultKeyProperty",
                 at: defaultKey.variable
             )
         }
 
         let fallbacks = try others.map { other -> Fallback in
-            if other.attributes[.absentDefault] != nil,
-               let initializer = other.variable._syntax.bindings.first?.initializer?.value
+            if let defaultValue = other.attributes[.defaultValue]?.first as? DefaultValue,
+               other.attributes[.valueStrategy] == nil,
+               let fallback = defaultValue.fallback(of: other.variable)
             {
-                return Fallback(identifier: other.identifier, value: initializer.trimmedDescription)
+                return Fallback(identifier: other.identifier, value: fallback)
             }
             if other.type.isOptional, other.attributes.isEmpty || other.attributes.keys.allSatisfy({ $0 == .codingKey }) {
                 return Fallback(identifier: other.identifier, value: "nil")
             }
             throw diagnose(
-                "'@DefaultKey' needs every other coded property to be Optional or '@AbsentDefault'",
+                "'@DefaultKey' needs every other coded property to be Optional or '@DefaultValue'",
                 id: "defaultKeyOthers",
                 at: other.variable
             )

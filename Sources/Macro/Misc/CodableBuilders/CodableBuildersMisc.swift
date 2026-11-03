@@ -33,7 +33,6 @@ enum KnownAttribute: String {
     case omitCoding
     case codingKey
     case defaultValue
-    case absentDefault
     case defaultKey
     case valueStrategy
     case customCoding

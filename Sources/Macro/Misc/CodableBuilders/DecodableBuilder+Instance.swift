@@ -64,26 +64,29 @@ extension DecodableBuilder {
             return nil
         }
 
-        if knownAttributes[.absentDefault] != nil {
-            guard
-                let initializer = variable._syntax.bindings.first?.initializer?.value,
-                variable._syntax.bindingSpecifier.tokenKind == .keyword(.var)
-            else {
+        if let defaultValue = knownAttributes[.defaultValue]?.first as? DefaultValue,
+           defaultValue.providerType == nil || defaultValue.throwsOnMalformed
+        {
+            let fallback = defaultValue.fallback(of: variable)
+            guard let fallback, knownAttributes[.valueStrategy] == nil else {
+                let message = fallback == nil
+                    ? "'@DefaultValue' without a provider requires a 'var' with an initial value"
+                    : "'@DefaultValue' with 'malformed: .throwError' or without a provider can't be combined with '@ValueStrategy'"
                 MacroConfiguration.current.context.diagnose(
                     SimpleDiagnosticMessage
                         .error(
-                            message: "'@AbsentDefault' requires a 'var' with an initial value",
-                            diagnosticID: MessageID(domain: MacroConfiguration.current.name, id: "absentDefaultInitializer")
+                            message: message,
+                            diagnosticID: MessageID(domain: MacroConfiguration.current.name, id: "defaultValueFallback")
                         )
                         .diagnose(at: variable._syntax)
                 )
                 return nil
             }
             let typeName = type.typeDescription(preservingOptional: false)
-            return DecodableBuilder.BuildingData.Item(
-                identifier: identifier,
-                function: "try container.decodeIfPresent(\(typeName), forKey: .\(identifier)) ?? \(initializer.trimmedDescription)"
-            )
+            let function = defaultValue.throwsOnMalformed
+                ? "try container.decodeIfPresent(\(typeName), forKey: .\(identifier)) ?? \(fallback)"
+                : "CustomCodingDecoding.decode(\(typeName), forKey: .\(identifier), container: container, default: \(fallback))"
+            return DecodableBuilder.BuildingData.Item(identifier: identifier, function: function)
         }
 
         let function: FunctionBuilder
@@ -128,8 +131,8 @@ extension DecodableBuilder {
                 parameters.append(("strategy", "\(strategy.strategyType).self"))
             }
 
-            if let defaultValue = knownAttributes[.defaultValue]?.first as? DefaultValue {
-                parameters.append(("provider", "\(defaultValue.providerType).self"))
+            if let defaultValue = knownAttributes[.defaultValue]?.first as? DefaultValue, let providerType = defaultValue.providerType {
+                parameters.append(("provider", "\(providerType).self"))
             }
 
             function = FunctionBuilder(
